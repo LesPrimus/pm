@@ -1,7 +1,7 @@
 # Backend
 
 FastAPI app that serves the JSON API under `/api` and the static frontend at `/`.
-Dependencies are managed by uv. Python 3.13, pinned in `.python-version`.
+Dependencies are managed by uv. Python 3.14, pinned in `.python-version` and matched by the Docker base image.
 
 ## Layout
 

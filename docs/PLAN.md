@@ -24,7 +24,7 @@ compose.yaml            Single service, published port 8000, ./data volume
 .env.example            Documented placeholder values (committed)
 backend/
   AGENTS.md             Backend description, kept current
-  pyproject.toml        uv-managed, Python 3.13
+  pyproject.toml        uv-managed, Python 3.14
   app/
     main.py             FastAPI app: routers, session middleware, static mount
     config.py           Settings from environment
