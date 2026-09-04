@@ -5,8 +5,9 @@ Python FastAPI backend, packaged in one Docker container with a local SQLite dat
 
 ## Status
 
-Under construction, built in the parts listed in [docs/PLAN.md](docs/PLAN.md). Part 1 (planning) is done.
-The frontend demo in `frontend/` runs standalone; the backend, Docker setup, and run scripts arrive in Part 2.
+Under construction, built in the parts listed in [docs/PLAN.md](docs/PLAN.md). Parts 1 and 2 are done:
+the container runs and serves a placeholder page that calls the API. The NextJS board is wired in at Part 3;
+until then the demo in `frontend/` runs standalone.
 
 ## Layout
 
@@ -19,20 +20,27 @@ docs/       Plan and design documents
 
 ## Run
 
-Not available yet. Until Part 2 lands, run the frontend demo on its own:
+Requires Docker.
 
 ```bash
-cd frontend
-npm install
-npm run dev
+./scripts/start.sh     # Windows: .\scripts\start.ps1
 ```
+
+Then open http://localhost:8000. To stop:
+
+```bash
+./scripts/stop.sh      # Windows: .\scripts\stop.ps1
+```
+
+The frontend demo still runs on its own with `cd frontend && npm install && npm run dev`.
 
 ## Configuration
 
-`.env` in the project root holds `OPENROUTER_API_KEY`. It is gitignored and needed from Part 8 onward.
-A committed `.env.example` lands with the Docker setup in Part 2.
+Copy `.env.example` to `.env` in the project root and set `OPENROUTER_API_KEY`. Needed from Part 8 onward;
+the app starts without it. `.env` is gitignored.
 
 ## Documentation
 
 - [AGENTS.md](AGENTS.md) - requirements, technical decisions, coding standards
 - [docs/PLAN.md](docs/PLAN.md) - the 10-part build plan with tests and success criteria
+- [backend/AGENTS.md](backend/AGENTS.md), [frontend/AGENTS.md](frontend/AGENTS.md) - per-directory detail

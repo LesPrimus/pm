@@ -1,0 +1,12 @@
+services:
+  app:
+    build: .
+    image: pm-app
+    container_name: pm-app
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    env_file:
+      - path: .env
+        required: false

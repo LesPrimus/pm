@@ -12,7 +12,7 @@ Rules for the agent:
 - Coding standards from the root `AGENTS.md` apply throughout: latest idiomatic libraries, simplest thing that
   works, no speculative features, no emojis, root-cause fixes only.
 
-Status: Part 1 complete and approved. Part 2 in progress.
+Status: Parts 1 and 2 complete. Part 3 next.
 
 ## Target repo layout
 
@@ -96,17 +96,19 @@ Success criteria:
 Goal: a Docker container that runs FastAPI, serves a placeholder static page at `/`, and answers an API call
 from that page.
 
-- [ ] Create `backend/pyproject.toml` managed by uv: `fastapi`, `uvicorn[standard]`, dev group `pytest`, `httpx`.
-- [ ] Create `backend/app/config.py` reading settings from the environment with sane local defaults.
-- [ ] Create `backend/app/main.py`: FastAPI app, `/api` router included first, `StaticFiles(html=True)` mounted at `/`.
-- [ ] Add `GET /api/health` returning `{"status": "ok"}`.
-- [ ] Add `backend/app/static/index.html`: a placeholder page that fetches `/api/health` and renders the result.
-- [ ] Write the `Dockerfile` (python slim base, `uv` copied from the official image, `uv sync --frozen --no-dev`).
-- [ ] Write `compose.yaml`: one service, `8000:8000`, `./data` volume, env file `.env`.
-- [ ] Write `scripts/start.sh` and `scripts/stop.sh` (Mac and Linux, `chmod +x`), `scripts/start.ps1` and
+- [x] Create `backend/pyproject.toml` managed by uv: `fastapi`, `uvicorn[standard]`, dev group `pytest`, `httpx2`
+      (Starlette's `TestClient` deprecates plain `httpx`).
+- [x] Create `backend/app/config.py` reading settings from the environment with sane local defaults.
+- [x] Create `backend/app/main.py`: FastAPI app, `/api` router included first, `StaticFiles(html=True)` mounted at `/`.
+- [x] Add `GET /api/health` returning `{"status": "ok"}`.
+- [x] Add `backend/app/static/index.html`: a placeholder page that fetches `/api/health` and renders the result.
+- [x] Write the `Dockerfile` (python slim base, `uv` copied from the official image, `uv sync --frozen --no-dev`).
+- [x] Write `compose.yaml`: one service, `8000:8000`, `./data` volume, env file `.env`.
+- [x] Write `scripts/start.sh` and `scripts/stop.sh` (Mac and Linux, `chmod +x`), `scripts/start.ps1` and
       `scripts/stop.ps1` (Windows). Start builds and brings the stack up, stop tears it down.
-- [ ] Add `.env.example`; confirm `.env`, `data/`, and `backend/app/static/` are gitignored.
-- [ ] Update `backend/AGENTS.md` and `scripts/AGENTS.md` to describe what now exists.
+- [x] Add `.env.example`; gitignore `.env` and `data/`. `backend/app/static/` stays committed for now because
+      it holds the placeholder page; it becomes build output and gets gitignored in Part 3.
+- [x] Update `backend/AGENTS.md` and `scripts/AGENTS.md` to describe what now exists.
 
 Tests (`backend/tests/`, run with `uv run pytest`):
 
@@ -131,7 +133,7 @@ Goal: the real NextJS Kanban board is statically built and served by FastAPI at 
       `npm run build` produces `frontend/out` with `index.html`.
 - [ ] Add a frontend build stage to the `Dockerfile` (`npm ci`, `npm run build`) and copy `frontend/out`
       into `backend/app/static` in the runtime stage.
-- [ ] Delete the Part 2 placeholder HTML; the static mount now serves the export.
+- [ ] Delete the Part 2 placeholder HTML and gitignore `backend/app/static/`; the static mount now serves the export.
 - [ ] Add `frontend/src/lib/api.ts` with the base-URL rule and a typed `getHealth()` call, used by the board
       header to prove the frontend reaches the API.
 - [ ] Point `playwright.config.ts` at the served build (`http://127.0.0.1:8000`) instead of `next dev`, so e2e

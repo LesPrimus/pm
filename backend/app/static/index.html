@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Project Management MVP</title>
+    <style>
+      :root {
+        --accent-yellow: #ecad0a;
+        --primary-blue: #209dd7;
+        --secondary-purple: #753991;
+        --navy-dark: #032147;
+        --gray-text: #888888;
+        --surface: #f7f8fb;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: var(--surface);
+        color: var(--navy-dark);
+        font-family: "Segoe UI", system-ui, sans-serif;
+      }
+      main {
+        max-width: 32rem;
+        padding: 2.5rem;
+        border-radius: 1.5rem;
+        background: #fff;
+        box-shadow: 0 18px 40px rgba(3, 33, 71, 0.12);
+      }
+      h1 {
+        margin: 0 0 0.5rem;
+        font-size: 1.75rem;
+      }
+      p {
+        color: var(--gray-text);
+        line-height: 1.6;
+      }
+      .rule {
+        width: 3rem;
+        height: 0.25rem;
+        border-radius: 999px;
+        background: var(--accent-yellow);
+        margin-bottom: 1.5rem;
+      }
+      #health {
+        margin-top: 1.5rem;
+        padding: 0.75rem 1rem;
+        border-radius: 0.75rem;
+        background: var(--surface);
+        font-family: ui-monospace, monospace;
+        font-size: 0.9rem;
+        color: var(--primary-blue);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="rule"></div>
+      <h1>Hello world</h1>
+      <p>
+        FastAPI is serving this page as static content. The line below is fetched
+        from the API at <code>/api/health</code>. The Kanban board replaces this
+        page in Part 3.
+      </p>
+      <div id="health">Calling the API...</div>
+    </main>
+    <script>
+      fetch("/api/health")
+        .then((response) => response.json())
+        .then((data) => {
+          document.getElementById("health").textContent =
+            "GET /api/health -> " + JSON.stringify(data);
+        })
+        .catch((error) => {
+          document.getElementById("health").textContent =
+            "API call failed: " + error.message;
+        });
+    </script>
+  </body>
+</html>
