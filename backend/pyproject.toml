@@ -11,6 +11,10 @@ dependencies = [
 [tool.uv]
 package = false
 
+[tool.ruff.lint]
+# Defaults (pycodestyle errors, pyflakes) plus import sorting, pyupgrade, and bugbear.
+select = ["E", "F", "I", "UP", "B"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
@@ -19,4 +23,5 @@ pythonpath = ["."]
 dev = [
     "httpx2>=2.12.0",
     "pytest>=9.1.1",
+    "ruff>=0.16.6",
 ]

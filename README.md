@@ -39,6 +39,22 @@ The frontend demo still runs on its own with `cd frontend && npm install && npm 
 Copy `.env.example` to `.env` in the project root and set `OPENROUTER_API_KEY`. Needed from Part 8 onward;
 the app starts without it. `.env` is gitignored.
 
+## Development
+
+```bash
+uv tool install pre-commit   # once
+pre-commit install           # once, installs the git hook
+pre-commit run --all-files   # lint and format everything
+```
+
+Commits run ruff over the backend. If a hook rewrites a file the commit stops, so re-stage and commit again.
+
+Backend tests:
+
+```bash
+cd backend && uv run pytest
+```
+
 ## Documentation
 
 - [AGENTS.md](AGENTS.md) - requirements, technical decisions, coding standards

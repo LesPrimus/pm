@@ -6,7 +6,7 @@ Dependencies are managed by uv. Python 3.14, pinned in `.python-version` and mat
 ## Layout
 
 ```
-pyproject.toml    uv project (non-package), dependencies, pytest config
+pyproject.toml    uv project (non-package), dependencies, ruff and pytest config
 uv.lock           Locked dependency set, used by the Docker build
 app/
   main.py         FastAPI app: CORS (dev only), routers, API 404 guard, static mount
@@ -46,11 +46,20 @@ The mount is constructed at import time, so `STATIC_DIR` must exist before the a
 cd backend
 uv sync                 # create .venv and install, including the dev group
 uv run pytest           # test suite
+uv run ruff check .     # lint (add --fix to apply)
+uv run ruff format .    # format
 uv run uvicorn app.main:app --reload --port 8000
 ```
 
 Run from `backend/`: the project is non-package, so `app` is imported from the working directory
 (`pythonpath = ["."]` covers pytest, uvicorn adds the cwd itself).
+
+## Lint and format
+
+ruff, configured under `[tool.ruff.lint]` in `pyproject.toml`: the defaults plus import sorting (`I`),
+pyupgrade (`UP`), and bugbear (`B`). `.pre-commit-config.yaml` in the project root runs `ruff-check --fix`
+and `ruff-format` on every commit, pinned to the same ruff version as the dev dependency. Keep the two in
+step when bumping.
 
 ## Notes
 
