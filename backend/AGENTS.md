@@ -9,16 +9,16 @@ Dependencies are managed by uv. Python 3.14, pinned in `.python-version` and mat
 pyproject.toml    uv project (non-package), dependencies, ruff and pytest config
 uv.lock           Locked dependency set, used by the Docker build
 app/
-  main.py         FastAPI app: CORS (dev only), routers, API 404 guard, static mount
+  main.py         create_app factory: CORS (dev only), routers, API 404 guard, static mount
   config.py       Settings read from the environment
   api/
     health.py     GET /api/health
-  static/         Files served at /. Currently a placeholder page; replaced by the
-                  built NextJS export in Part 3
+  static/         The built NextJS export, copied in by Docker. Not in git.
 tests/
-  conftest.py     TestClient fixture
+  conftest.py     Fixtures: a stand-in export directory and a TestClient over it
   test_health.py  Health endpoint
   test_static.py  Static serving and the API 404 guard
+  test_app.py     The app still runs when the frontend has not been built
 ```
 
 ## Route ordering
@@ -31,13 +31,24 @@ tests/
   and once the NextJS export ships a `404.html` an unknown API path would return an HTML page.
 - Everything else is served from `app/static`.
 
-The mount is constructed at import time, so `STATIC_DIR` must exist before the app is imported.
+The mount is skipped when the directory is absent, so the API still runs on a fresh clone that has not
+built the frontend. `check_dir=False` is not enough on its own: Starlette re-checks the directory on the
+first request and raises there instead.
+
+## Serving the frontend
+
+`create_app(static_dir)` takes the directory as an argument, so tests can point it at a fixture export
+instead of requiring a real build. `app = create_app()` at module scope keeps `uvicorn app.main:app` working.
+
+`STATIC_DIR` resolves in this order: the `STATIC_DIR` environment variable, then `app/static` if it exists
+(the Docker layout, where the build copies the export in), then `frontend/out` (the local layout, where
+`npm run build` leaves it). So `uv run uvicorn app.main:app` serves a locally built frontend with no setup.
 
 ## Configuration
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `STATIC_DIR` | `app/static` | Directory served at `/` |
+| `STATIC_DIR` | `app/static`, else `frontend/out` | Directory served at `/` |
 | `DEV_CORS_ORIGIN` | unset | When set, enables CORS with credentials for that one origin. Used for `npm run dev` against a local backend. Unset in Docker, where API and site share an origin. |
 
 ## Commands

@@ -5,9 +5,9 @@ Python FastAPI backend, packaged in one Docker container with a local SQLite dat
 
 ## Status
 
-Under construction, built in the parts listed in [docs/PLAN.md](docs/PLAN.md). Parts 1 and 2 are done:
-the container runs and serves a placeholder page that calls the API. The NextJS board is wired in at Part 3;
-until then the demo in `frontend/` runs standalone.
+Under construction, built in the parts listed in [docs/PLAN.md](docs/PLAN.md). Parts 1 to 3 are done:
+the container serves the Kanban board at `/`. Board edits are not saved yet; sign in, persistence, and the
+AI sidebar come in Parts 4 to 10.
 
 ## Layout
 
@@ -32,7 +32,12 @@ Then open http://localhost:8000. To stop:
 ./scripts/stop.sh      # Windows: .\scripts\stop.ps1
 ```
 
-The frontend demo still runs on its own with `cd frontend && npm install && npm run dev`.
+Without Docker, build the frontend once and run the backend against it:
+
+```bash
+cd frontend && npm ci && npm run build
+cd ../backend && uv run uvicorn app.main:app --port 8000
+```
 
 ## Configuration
 
@@ -49,10 +54,12 @@ pre-commit run --all-files   # lint and format everything
 
 Commits run ruff over the backend. If a hook rewrites a file the commit stops, so re-stage and commit again.
 
-Backend tests:
+Tests:
 
 ```bash
-cd backend && uv run pytest
+cd backend  && uv run pytest      # backend
+cd frontend && npm run test:unit  # vitest
+cd frontend && npm run test:e2e   # playwright, builds and serves the app itself
 ```
 
 ## Documentation

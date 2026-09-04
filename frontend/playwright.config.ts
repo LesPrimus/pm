@@ -1,5 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
+// End to end runs against the real deployment shape: the static export built by
+// NextJS and served by FastAPI, not the NextJS dev server.
 export default defineConfig({
   testDir: "./tests",
   timeout: 60_000,
@@ -7,14 +9,15 @@ export default defineConfig({
     timeout: 10_000,
   },
   use: {
-    baseURL: "http://127.0.0.1:3000",
+    baseURL: "http://127.0.0.1:8000",
     trace: "retain-on-failure",
   },
   webServer: {
-    command: "npm run dev -- --hostname 127.0.0.1 --port 3000",
-    url: "http://127.0.0.1:3000",
-    reuseExistingServer: true,
-    timeout: 120_000,
+    command:
+      "npm run build && uv run --directory ../backend uvicorn app.main:app --host 127.0.0.1 --port 8000",
+    url: "http://127.0.0.1:8000/api/health",
+    reuseExistingServer: !process.env.CI,
+    timeout: 180_000,
   },
   projects: [
     {

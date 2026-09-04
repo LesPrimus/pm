@@ -6,6 +6,17 @@ test("loads the kanban board", async ({ page }) => {
   await expect(page.locator('[data-testid^="column-"]')).toHaveCount(5);
 });
 
+test("reaches the API from the served build", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByTestId("api-status")).toHaveAttribute("data-state", "ok");
+});
+
+test("serves JSON, not the export 404 page, for unknown API paths", async ({ request }) => {
+  const response = await request.get("/api/does-not-exist");
+  expect(response.status()).toBe(404);
+  expect(response.headers()["content-type"]).toContain("application/json");
+});
+
 test("adds a card to a column", async ({ page }) => {
   await page.goto("/");
   const firstColumn = page.locator('[data-testid^="column-"]').first();

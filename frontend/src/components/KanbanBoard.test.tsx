@@ -1,6 +1,9 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { vi } from "vitest";
 import { KanbanBoard } from "@/components/KanbanBoard";
+
+vi.mock("@/lib/api", () => ({ getHealth: vi.fn().mockResolvedValue({ status: "ok" }) }));
 
 const getFirstColumn = () => screen.getAllByTestId(/column-/i)[0];
 

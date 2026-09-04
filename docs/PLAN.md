@@ -12,7 +12,7 @@ Rules for the agent:
 - Coding standards from the root `AGENTS.md` apply throughout: latest idiomatic libraries, simplest thing that
   works, no speculative features, no emojis, root-cause fixes only.
 
-Status: Parts 1 and 2 complete. Part 3 next.
+Status: Parts 1 to 3 complete. Part 4 next.
 
 ## Target repo layout
 
@@ -129,16 +129,16 @@ Success criteria:
 
 Goal: the real NextJS Kanban board is statically built and served by FastAPI at `/`.
 
-- [ ] Set `output: "export"` and `images: { unoptimized: true }` in `frontend/next.config.ts`; confirm
+- [x] Set `output: "export"` and `images: { unoptimized: true }` in `frontend/next.config.ts`; confirm
       `npm run build` produces `frontend/out` with `index.html`.
-- [ ] Add a frontend build stage to the `Dockerfile` (`npm ci`, `npm run build`) and copy `frontend/out`
+- [x] Add a frontend build stage to the `Dockerfile` (`npm ci`, `npm run build`) and copy `frontend/out`
       into `backend/app/static` in the runtime stage.
-- [ ] Delete the Part 2 placeholder HTML and gitignore `backend/app/static/`; the static mount now serves the export.
-- [ ] Add `frontend/src/lib/api.ts` with the base-URL rule and a typed `getHealth()` call, used by the board
+- [x] Delete the Part 2 placeholder HTML and gitignore `backend/app/static/`; the static mount now serves the export.
+- [x] Add `frontend/src/lib/api.ts` with the base-URL rule and a typed `getHealth()` call, used by the board
       header to prove the frontend reaches the API.
-- [ ] Point `playwright.config.ts` at the served build (`http://127.0.0.1:8000`) instead of `next dev`, so e2e
+- [x] Point `playwright.config.ts` at the served build (`http://127.0.0.1:8000`) instead of `next dev`, so e2e
       exercises the real deployment path.
-- [ ] Update `frontend/AGENTS.md` and `backend/AGENTS.md`.
+- [x] Update `frontend/AGENTS.md` and `backend/AGENTS.md`.
 
 Tests:
 

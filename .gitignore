@@ -177,3 +177,6 @@ cython_debug/
 
 # Local database
 data/
+
+# Built frontend, copied in by the Docker build
+backend/app/static/
