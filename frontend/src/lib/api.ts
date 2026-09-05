@@ -13,6 +13,23 @@ const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
   return response.json() as Promise<T>;
 };
 
+const post = <T>(path: string, body?: unknown) =>
+  request<T>(path, {
+    method: "POST",
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
 export type Health = { status: string };
 
 export const getHealth = () => request<Health>("/api/health");
+
+export type User = { username: string };
+
+/** Resolves to the signed in user, or rejects with a 401 when there is no session. */
+export const getMe = () => request<User>("/api/auth/me");
+
+export const login = (username: string, password: string) =>
+  post<User>("/api/auth/login", { username, password });
+
+export const logout = () => post<{ status: string }>("/api/auth/logout");

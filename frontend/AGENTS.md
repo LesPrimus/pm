@@ -1,8 +1,7 @@
 # Frontend
 
 NextJS Kanban board, built as a static export and served by the FastAPI backend at `/`.
-Board state is still in React memory and resets on reload; the only backend call so far is a health check.
-There is no auth and no persistence yet.
+Reaching `/` requires signing in. Board state is still in React memory and resets on reload.
 
 ## Stack
 
@@ -34,6 +33,8 @@ src/
     globals.css     Tailwind import, brand CSS variables, body defaults, .font-display helper.
   components/
     ApiStatus.tsx          Header chip. Calls getHealth on mount and reports connected or unreachable.
+    AuthGate.tsx           Decides between the login screen and the board. Owns the session state.
+    LoginScreen.tsx        Username and password form. One error message for either wrong field.
     KanbanBoard.tsx        Client component. Owns all board state and every mutation handler.
     KanbanColumn.tsx       One column: droppable target, rename input, card list, NewCardForm.
     KanbanCard.tsx         One sortable card with a Remove button.
@@ -90,6 +91,21 @@ Brand colors are CSS variables on `:root` in `globals.css` and referenced as `te
 `--gray-text #888888`, plus `--surface`, `--surface-strong`, `--stroke`, `--shadow`.
 Light theme only. Rounded cards, soft shadows, two decorative radial-gradient blobs behind the board.
 
+## Auth gate
+
+`page.tsx` renders `AuthGate`, which calls `getMe()` on mount:
+
+- pending: a "Loading" splash, so the board never flashes before the check finishes
+- rejected (401): `LoginScreen`
+- resolved: `KanbanBoard`, given `username` and `onSignOut`
+
+The 401 from `/api/auth/me` is expected on a first visit and shows up in the browser console. That is the
+gate working, not a failure.
+
+This is client side because the site is a static export with no server in front of it. It keeps an
+unauthenticated visitor from seeing board data, since the data itself will come from guarded API routes
+in Part 7. It is not a security boundary on its own: the backend `require_user` dependency is.
+
 ## API client
 
 `src/lib/api.ts` is the single entry point to the backend.
@@ -113,6 +129,9 @@ way, and lazy reads let tests stub it.
 - Delete button: `aria-label="Delete <card title>"`
 
 - API status chip: `data-testid="api-status"` with `data-state` of `checking`, `ok`, or `error`
+- Signed in user: `data-testid="signed-in-user"`; session check splash: `data-testid="auth-checking"`
+- Login error: `data-testid="login-error"`. Select it by test id, not `getByRole("alert")`: NextJS renders
+  its own `role="alert"` route announcer, so the role matches two elements in a real browser.
 
 Keep these stable; both the unit and e2e suites select on them.
 
@@ -134,7 +153,6 @@ npm run test:all
 
 ## Known gaps (addressed by docs/PLAN.md)
 
-- No auth: the board is visible to anyone who loads the page (Part 4).
 - No persistence: reloading discards every edit (Part 7).
 - `initialData` is still hardcoded in the bundle; it becomes seed data owned by the backend (Part 6).
 - No AI chat sidebar (Part 10).

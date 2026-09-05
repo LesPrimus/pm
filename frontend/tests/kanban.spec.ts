@@ -1,13 +1,20 @@
 import { expect, test } from "@playwright/test";
 
-test("loads the kanban board", async ({ page }) => {
+// The board is behind the login gate, so every board test starts signed in.
+test.beforeEach(async ({ page }) => {
   await page.goto("/");
+  await page.getByLabel("Username").fill("user");
+  await page.getByLabel("Password").fill("password");
+  await page.getByRole("button", { name: /sign in/i }).click();
+  await expect(page.getByTestId("signed-in-user")).toBeVisible();
+});
+
+test("loads the kanban board", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Kanban Studio" })).toBeVisible();
   await expect(page.locator('[data-testid^="column-"]')).toHaveCount(5);
 });
 
 test("reaches the API from the served build", async ({ page }) => {
-  await page.goto("/");
   await expect(page.getByTestId("api-status")).toHaveAttribute("data-state", "ok");
 });
 
@@ -18,7 +25,6 @@ test("serves JSON, not the export 404 page, for unknown API paths", async ({ req
 });
 
 test("adds a card to a column", async ({ page }) => {
-  await page.goto("/");
   const firstColumn = page.locator('[data-testid^="column-"]').first();
   await firstColumn.getByRole("button", { name: /add a card/i }).click();
   await firstColumn.getByPlaceholder("Card title").fill("Playwright card");
@@ -28,7 +34,6 @@ test("adds a card to a column", async ({ page }) => {
 });
 
 test("moves a card between columns", async ({ page }) => {
-  await page.goto("/");
   const card = page.getByTestId("card-card-1");
   const targetColumn = page.getByTestId("column-col-review");
   const cardBox = await card.boundingBox();

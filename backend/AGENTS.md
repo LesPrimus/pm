@@ -9,14 +9,17 @@ Dependencies are managed by uv. Python 3.14, pinned in `.python-version` and mat
 pyproject.toml    uv project (non-package), dependencies, ruff and pytest config
 uv.lock           Locked dependency set, used by the Docker build
 app/
-  main.py         create_app factory: CORS (dev only), routers, API 404 guard, static mount
+  main.py         create_app factory: session middleware, CORS (dev only), routers,
+                  API 404 guard, static mount
   config.py       Settings read from the environment
   api/
     health.py     GET /api/health
+    auth.py       Login, logout, me, and the require_user dependency
   static/         The built NextJS export, copied in by Docker. Not in git.
 tests/
   conftest.py     Fixtures: a stand-in export directory and a TestClient over it
   test_health.py  Health endpoint
+  test_auth.py    Sign in, sign out, session, and the route guard
   test_static.py  Static serving and the API 404 guard
   test_app.py     The app still runs when the frontend has not been built
 ```
@@ -44,11 +47,31 @@ instead of requiring a real build. `app = create_app()` at module scope keeps `u
 (the Docker layout, where the build copies the export in), then `frontend/out` (the local layout, where
 `npm run build` leaves it). So `uv run uvicorn app.main:app` serves a locally built frontend with no setup.
 
+## Auth
+
+Session cookie auth via Starlette's `SessionMiddleware`, which signs the cookie with `SECRET_KEY`. There is
+no user table yet: `login` compares against `AUTH_USERNAME` and `AUTH_PASSWORD` with `secrets.compare_digest`
+and stores the username in the session. Part 6 moves this to the database.
+
+| Route | Behaviour |
+| --- | --- |
+| `POST /api/auth/login` | 200 with the user and a session cookie, or 401 |
+| `POST /api/auth/logout` | Clears the session |
+| `GET /api/auth/me` | 200 with the user, or 401 when anonymous |
+
+Both failure modes return the same body, so a wrong username cannot be told apart from a wrong password.
+Guard a route by depending on `CurrentUser` (`Annotated[str, Depends(require_user)]`), which yields the
+username or raises 401. The frontend calls `/api/auth/me` on load and treats the 401 as "show the login
+screen", so that 401 is expected traffic, not an error.
+
 ## Configuration
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `STATIC_DIR` | `app/static`, else `frontend/out` | Directory served at `/` |
+| `SECRET_KEY` | a dev placeholder | Signs the session cookie |
+| `AUTH_USERNAME` | `user` | The MVP account |
+| `AUTH_PASSWORD` | `password` | The MVP password |
 | `DEV_CORS_ORIGIN` | unset | When set, enables CORS with credentials for that one origin. Used for `npm run dev` against a local backend. Unset in Docker, where API and site share an origin. |
 
 ## Commands
@@ -75,5 +98,5 @@ step when bumping.
 ## Notes
 
 - `httpx2` is the test HTTP client. Starlette's `TestClient` deprecates plain `httpx`.
-- Coming in later parts: session auth (Part 4), SQLite persistence and board routes (Part 6),
-  OpenRouter calls (Part 8), chat with structured outputs (Part 9).
+- Coming in later parts: SQLite persistence and board routes (Part 6), OpenRouter calls (Part 8),
+  chat with structured outputs (Part 9).

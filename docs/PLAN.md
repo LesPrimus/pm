@@ -12,7 +12,7 @@ Rules for the agent:
 - Coding standards from the root `AGENTS.md` apply throughout: latest idiomatic libraries, simplest thing that
   works, no speculative features, no emojis, root-cause fixes only.
 
-Status: Parts 1 to 3 complete. Part 4 next.
+Status: Parts 1 to 4 complete. Part 5 next.
 
 ## Target repo layout
 
@@ -160,16 +160,16 @@ Success criteria:
 
 Goal: `/` requires a login with `user` / `password`; the user can log out.
 
-- [ ] Add Starlette `SessionMiddleware` with a `SECRET_KEY` from config.
-- [ ] Add `backend/app/api/auth.py`: `POST /api/auth/login` (validates against configured credentials, sets the
+- [x] Add Starlette `SessionMiddleware` with a `SECRET_KEY` from config.
+- [x] Add `backend/app/api/auth.py`: `POST /api/auth/login` (validates against configured credentials, sets the
       session), `POST /api/auth/logout` (clears it), `GET /api/auth/me` (200 with the username, else 401).
-- [ ] Add a `require_user` FastAPI dependency for protecting routes in later parts.
-- [ ] Frontend: an auth context that calls `/api/auth/me` on mount; render the login form while unauthenticated
+- [x] Add a `require_user` FastAPI dependency for protecting routes in later parts.
+- [x] Frontend: an auth context that calls `/api/auth/me` on mount; render the login form while unauthenticated
       and the board once authenticated. Client-side gate, since the site is a static export.
-- [ ] Build the login screen using the brand palette; submit button uses `--secondary-purple`.
-- [ ] Show the signed-in username and a Log out control in the board header.
-- [ ] Show an inline error on bad credentials; never leak which field was wrong.
-- [ ] Update `frontend/AGENTS.md` and `backend/AGENTS.md`.
+- [x] Build the login screen using the brand palette; submit button uses `--secondary-purple`.
+- [x] Show the signed-in username and a Log out control in the board header.
+- [x] Show an inline error on bad credentials; never leak which field was wrong.
+- [x] Update `frontend/AGENTS.md` and `backend/AGENTS.md`.
 
 Tests:
 

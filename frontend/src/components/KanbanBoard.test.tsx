@@ -8,13 +8,15 @@ vi.mock("@/lib/api", () => ({ getHealth: vi.fn().mockResolvedValue({ status: "ok
 const getFirstColumn = () => screen.getAllByTestId(/column-/i)[0];
 
 describe("KanbanBoard", () => {
-  it("renders five columns", () => {
-    render(<KanbanBoard />);
+  it("renders five columns", async () => {
+    render(<KanbanBoard username="user" onSignOut={vi.fn()} />);
     expect(screen.getAllByTestId(/column-/i)).toHaveLength(5);
+    // Let the ApiStatus health call settle, so its state update stays inside the test.
+    await screen.findByText(/api connected/i);
   });
 
   it("renames a column", async () => {
-    render(<KanbanBoard />);
+    render(<KanbanBoard username="user" onSignOut={vi.fn()} />);
     const column = getFirstColumn();
     const input = within(column).getByLabelText("Column title");
     await userEvent.clear(input);
@@ -23,7 +25,7 @@ describe("KanbanBoard", () => {
   });
 
   it("adds and removes a card", async () => {
-    render(<KanbanBoard />);
+    render(<KanbanBoard username="user" onSignOut={vi.fn()} />);
     const column = getFirstColumn();
     const addButton = within(column).getByRole("button", {
       name: /add a card/i,

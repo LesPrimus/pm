@@ -3,9 +3,11 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
 
+from app.api.auth import router as auth_router
 from app.api.health import router as health_router
-from app.config import DEV_CORS_ORIGIN, STATIC_DIR
+from app.config import DEV_CORS_ORIGIN, SECRET_KEY, STATIC_DIR
 
 
 def create_app(static_dir: Path = STATIC_DIR) -> FastAPI:
@@ -20,7 +22,10 @@ def create_app(static_dir: Path = STATIC_DIR) -> FastAPI:
             allow_headers=["*"],
         )
 
+    app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY, same_site="lax")
+
     app.include_router(health_router, prefix="/api")
+    app.include_router(auth_router, prefix="/api")
 
     @app.api_route(
         "/api/{path:path}",
