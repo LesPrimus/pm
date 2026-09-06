@@ -12,7 +12,7 @@ Rules for the agent:
 - Coding standards from the root `AGENTS.md` apply throughout: latest idiomatic libraries, simplest thing that
   works, no speculative features, no emojis, root-cause fixes only.
 
-Status: Parts 1 to 4 complete. Part 5 next.
+Status: Parts 1 to 4 complete. Part 5 written, awaiting sign-off.
 
 ## Target repo layout
 
@@ -193,15 +193,15 @@ Success criteria:
 
 Goal: an agreed, documented database design. No implementation in this part.
 
-- [ ] Propose the schema: `users` (id, username, password hash or MVP placeholder, created_at) and
+- [x] Propose the schema: `users` (id, username, password hash or MVP placeholder, created_at) and
       `boards` (id, user_id, data JSON, updated_at), with the board JSON matching the frontend `BoardData`
       shape (`columns[]` with ordered `cardIds`, `cards` keyed by id).
-- [ ] Write `docs/schema.json` as the machine-readable proposal: tables, columns, types, constraints, plus a
+- [x] Write `docs/schema.json` as the machine-readable proposal: tables, columns, types, constraints, plus a
       JSON Schema for the board document.
-- [ ] Write `docs/DATABASE.md`: the approach, why JSON-per-board rather than normalized tables, where the
+- [x] Write `docs/DATABASE.md`: the approach, why JSON-per-board rather than normalized tables, where the
       SQLite file lives, how it is created on first run, seeding of a new user's board from the demo data,
       and how a future migration to multiple boards or normalized tables would work.
-- [ ] Confirm the design supports multiple users even though the MVP has one.
+- [x] Confirm the design supports multiple users even though the MVP has one.
 - [ ] Get user sign-off before Part 6.
 
 Tests: none (documentation only). `docs/schema.json` must parse as valid JSON.

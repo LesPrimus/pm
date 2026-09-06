@@ -66,4 +66,5 @@ cd frontend && npm run test:e2e   # playwright, builds and serves the app itself
 
 - [AGENTS.md](AGENTS.md) - requirements, technical decisions, coding standards
 - [docs/PLAN.md](docs/PLAN.md) - the 10-part build plan with tests and success criteria
+- [docs/DATABASE.md](docs/DATABASE.md) - database approach, with the schema in [docs/schema.json](docs/schema.json)
 - [backend/AGENTS.md](backend/AGENTS.md), [frontend/AGENTS.md](frontend/AGENTS.md) - per-directory detail

@@ -1,0 +1,117 @@
+{
+  "version": 1,
+  "engine": "sqlite",
+  "description": "Proposed schema for the Project Management MVP. One JSON board document per user. See docs/DATABASE.md for the reasoning.",
+  "tables": {
+    "users": {
+      "description": "One row per account. The MVP creates a single row for the hardcoded account.",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "primaryKey": true,
+          "description": "SQLite rowid alias."
+        },
+        "username": {
+          "type": "TEXT",
+          "notNull": true,
+          "unique": true,
+          "description": "Login name. Unique, so it can identify the account."
+        },
+        "password_hash": {
+          "type": "TEXT",
+          "notNull": false,
+          "description": "Unused in the MVP, which authenticates against AUTH_USERNAME and AUTH_PASSWORD. Nullable rather than filled with a placeholder, so nothing reads a fake hash. Populated when real accounts arrive."
+        },
+        "created_at": {
+          "type": "TEXT",
+          "notNull": true,
+          "default": "datetime('now')",
+          "description": "ISO 8601 UTC."
+        }
+      }
+    },
+    "boards": {
+      "description": "One row per board. user_id is UNIQUE, which enforces the MVP rule of one board per user.",
+      "columns": {
+        "id": {
+          "type": "INTEGER",
+          "primaryKey": true
+        },
+        "user_id": {
+          "type": "INTEGER",
+          "notNull": true,
+          "unique": true,
+          "references": "users(id) ON DELETE CASCADE",
+          "description": "Owner. UNIQUE for now; drop the constraint to allow several boards per user."
+        },
+        "data": {
+          "type": "TEXT",
+          "notNull": true,
+          "check": "json_valid(data)",
+          "description": "The board as a JSON document, matching boardDocument below."
+        },
+        "updated_at": {
+          "type": "TEXT",
+          "notNull": true,
+          "default": "datetime('now')",
+          "description": "ISO 8601 UTC, rewritten on every save."
+        }
+      }
+    }
+  },
+  "ddl": [
+    "PRAGMA foreign_keys = ON;",
+    "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT NOT NULL UNIQUE, password_hash TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')));",
+    "CREATE TABLE IF NOT EXISTS boards (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE, data TEXT NOT NULL CHECK (json_valid(data)), updated_at TEXT NOT NULL DEFAULT (datetime('now')));",
+    "PRAGMA user_version = 1;"
+  ],
+  "boardDocument": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "BoardData",
+    "description": "Mirrors BoardData in frontend/src/lib/kanban.ts. Columns hold ordered card ids; cards live in a lookup keyed by id.",
+    "type": "object",
+    "required": ["columns", "cards"],
+    "additionalProperties": false,
+    "properties": {
+      "columns": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "required": ["id", "title", "cardIds"],
+          "additionalProperties": false,
+          "properties": {
+            "id": { "type": "string", "minLength": 1 },
+            "title": { "type": "string" },
+            "cardIds": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      },
+      "cards": {
+        "type": "object",
+        "propertyNames": { "minLength": 1 },
+        "additionalProperties": {
+          "type": "object",
+          "required": ["id", "title", "details"],
+          "additionalProperties": false,
+          "properties": {
+            "id": { "type": "string", "minLength": 1 },
+            "title": { "type": "string" },
+            "details": { "type": "string" }
+          }
+        }
+      }
+    }
+  },
+  "invariants": [
+    "Every id in a column's cardIds exists as a key in cards.",
+    "Every key in cards appears in exactly one column's cardIds: no orphans, no duplicates.",
+    "cards[key].id equals key.",
+    "Column ids are unique within the board."
+  ],
+  "invariantsNote": "JSON Schema cannot express these cross references. They are enforced in the backend on every write, whether it comes from PUT /api/board or from the AI in Part 9."
+}
