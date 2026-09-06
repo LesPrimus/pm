@@ -1,3 +1,5 @@
+import type { BoardData } from "@/lib/kanban";
+
 // Empty base URL means same origin, which is how the app is deployed: FastAPI
 // serves this site and the API. `npm run dev` sets NEXT_PUBLIC_API_BASE_URL to
 // the backend origin instead.
@@ -13,9 +15,9 @@ const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
   return response.json() as Promise<T>;
 };
 
-const post = <T>(path: string, body?: unknown) =>
+const send = <T>(method: string, path: string, body?: unknown) =>
   request<T>(path, {
-    method: "POST",
+    method,
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
   });
@@ -30,6 +32,21 @@ export type User = { username: string };
 export const getMe = () => request<User>("/api/auth/me");
 
 export const login = (username: string, password: string) =>
-  post<User>("/api/auth/login", { username, password });
+  send<User>("POST", "/api/auth/login", { username, password });
 
-export const logout = () => post<{ status: string }>("/api/auth/logout");
+export const logout = () => send<{ status: string }>("POST", "/api/auth/logout");
+
+/** The signed in user's board, seeded by the backend on first read. */
+export const getBoard = () => request<BoardData>("/api/board");
+
+/**
+ * Replaces the whole board. Rejects with a 422 if the board is inconsistent.
+ * `keepalive` lets a save started as the page goes away still reach the server.
+ */
+export const putBoard = (board: BoardData, keepalive = false) =>
+  request<BoardData>("/api/board", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(board),
+    keepalive,
+  });

@@ -5,9 +5,8 @@ Python FastAPI backend, packaged in one Docker container with a local SQLite dat
 
 ## Status
 
-Under construction, built in the parts listed in [docs/PLAN.md](docs/PLAN.md). Parts 1 to 6 are done:
-sign in with `user` / `password` to reach the Kanban board, and the backend stores boards in SQLite. The
-board on screen does not use those routes yet, which is Part 7. The AI sidebar is Parts 8 to 10.
+Under construction, built in the parts listed in [docs/PLAN.md](docs/PLAN.md). Parts 1 to 7 are done:
+sign in with `user` / `password` and the Kanban board persists to SQLite. The AI sidebar is Parts 8 to 10.
 
 ## Layout
 

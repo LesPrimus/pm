@@ -1,7 +1,7 @@
 # Frontend
 
 NextJS Kanban board, built as a static export and served by the FastAPI backend at `/`.
-Reaching `/` requires signing in. Board state is still in React memory and resets on reload.
+Reaching `/` requires signing in, and the board is loaded from and saved to the API, so edits persist.
 
 ## Stack
 
@@ -42,7 +42,8 @@ src/
     NewCardForm.tsx        Collapsed "Add a card" button that expands to a title/details form.
   lib/
     api.ts          The only place that talks to the backend. Base URL, credentials, error handling.
-    kanban.ts       Types, seed data, moveCard reducer, createId.
+    useBoard.ts     Loads the board, and owns saving: optimistic update, debounce, revert.
+    kanban.ts       Types, moveCard reducer, createId. No seed data: the backend owns that.
   test/
     setup.ts        Imports @testing-library/jest-dom.
     vitest.d.ts     Globals typing.
@@ -106,6 +107,23 @@ This is client side because the site is a static export with no server in front 
 unauthenticated visitor from seeing board data, since the data itself will come from guarded API routes
 in Part 7. It is not a security boundary on its own: the backend `require_user` dependency is.
 
+## Saving
+
+`useBoard` owns the board. `KanbanBoard` computes the next board and calls `commit(next)`; the hook shows it
+immediately and writes the whole board with `PUT /api/board`.
+
+- **Optimistic.** The screen never waits for the server.
+- **Reverting.** A failed write puts back the last board the server confirmed and shows a non-blocking
+  message in the header (`data-testid="board-error"`). The next successful write clears it.
+- **Debounced renames.** `commit(next, RENAME_DEBOUNCE_MS)` is used for column titles, so typing is one write
+  rather than one per keystroke. Every write sends the whole board, so a later edit simply supersedes a
+  pending one, and an immediate edit cancels a pending debounce rather than racing it.
+- **Flushed on `pagehide`.** Without this, renaming a column and reloading straight away loses the rename,
+  because the page goes before the debounce fires. The flush uses `keepalive` so the request survives the
+  page going away. This is a real case, not a hypothetical: the e2e suite caught it.
+
+`KanbanBoard` renders three states: `board-loading`, `board-load-error` (with a Retry), and the board.
+
 ## API client
 
 `src/lib/api.ts` is the single entry point to the backend.
@@ -129,11 +147,16 @@ way, and lazy reads let tests stub it.
 - Delete button: `aria-label="Delete <card title>"`
 
 - API status chip: `data-testid="api-status"` with `data-state` of `checking`, `ok`, or `error`
+- Board states: `data-testid` of `board-loading`, `board-load-error`, `board-error` (a failed save)
 - Signed in user: `data-testid="signed-in-user"`; session check splash: `data-testid="auth-checking"`
 - Login error: `data-testid="login-error"`. Select it by test id, not `getByRole("alert")`: NextJS renders
   its own `role="alert"` route announcer, so the role matches two elements in a real browser.
 
 Keep these stable; both the unit and e2e suites select on them.
+
+E2E runs with `workers: 1` and its own `data/e2e.db`, wiped at the start of each run. There is one account
+and one board, so parallel tests would overwrite each other. That is a property of the MVP, not a workaround.
+Playwright locators are `getByLabel`, not Testing Library's `getByLabelText`.
 
 When rendering a card outside `KanbanBoard`, give the test's `DndContext` a `PointerSensor` with
 `activationConstraint: { distance: 6 }`, as the board does. Without it a pointerdown starts a drag
@@ -153,6 +176,5 @@ npm run test:all
 
 ## Known gaps (addressed by docs/PLAN.md)
 
-- No persistence: reloading discards every edit (Part 7).
-- `initialData` is still hardcoded in the bundle; it becomes seed data owned by the backend (Part 6).
 - No AI chat sidebar (Part 10).
+- Saving is last write wins for the whole board. One user with one board, so this is not a live problem.

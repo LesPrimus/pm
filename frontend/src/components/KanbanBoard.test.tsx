@@ -1,51 +1,112 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { KanbanBoard } from "@/components/KanbanBoard";
+import { getBoard, getHealth, putBoard } from "@/lib/api";
+import type { BoardData } from "@/lib/kanban";
 
-vi.mock("@/lib/api", () => ({ getHealth: vi.fn().mockResolvedValue({ status: "ok" }) }));
+vi.mock("@/lib/api", () => ({
+  getHealth: vi.fn(),
+  getBoard: vi.fn(),
+  putBoard: vi.fn(),
+}));
 
-const getFirstColumn = () => screen.getAllByTestId(/column-/i)[0];
+const mockedGetBoard = vi.mocked(getBoard);
+const mockedPutBoard = vi.mocked(putBoard);
+
+const LOADED: BoardData = {
+  columns: [
+    { id: "col-a", title: "Backlog", cardIds: ["card-1", "card-2"] },
+    { id: "col-b", title: "Done", cardIds: [] },
+  ],
+  cards: {
+    "card-1": { id: "card-1", title: "First", details: "One" },
+    "card-2": { id: "card-2", title: "Second", details: "Two" },
+  },
+};
+
+const renderBoard = async () => {
+  render(<KanbanBoard username="user" onSignOut={vi.fn()} />);
+  await screen.findByTestId("column-col-a");
+};
+
+const columnA = () => screen.getByTestId("column-col-a");
 
 describe("KanbanBoard", () => {
-  it("renders five columns", async () => {
-    render(<KanbanBoard username="user" onSignOut={vi.fn()} />);
-    expect(screen.getAllByTestId(/column-/i)).toHaveLength(5);
-    // Let the ApiStatus health call settle, so its state update stays inside the test.
-    await screen.findByText(/api connected/i);
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.mocked(getHealth).mockResolvedValue({ status: "ok" });
+    mockedGetBoard.mockResolvedValue(LOADED);
+    mockedPutBoard.mockImplementation(async (board) => board);
   });
 
-  it("renames a column", async () => {
+  it("shows a loading state before the board arrives", () => {
+    mockedGetBoard.mockReturnValue(new Promise(() => {}));
     render(<KanbanBoard username="user" onSignOut={vi.fn()} />);
-    const column = getFirstColumn();
-    const input = within(column).getByLabelText("Column title");
-    await userEvent.clear(input);
-    await userEvent.type(input, "New Name");
-    expect(input).toHaveValue("New Name");
+    expect(screen.getByTestId("board-loading")).toBeInTheDocument();
+    expect(screen.queryByTestId("column-col-a")).not.toBeInTheDocument();
   });
 
-  it("adds and removes a card", async () => {
+  it("shows an error state when the board cannot be loaded", async () => {
+    mockedGetBoard.mockRejectedValue(new Error("500"));
     render(<KanbanBoard username="user" onSignOut={vi.fn()} />);
-    const column = getFirstColumn();
-    const addButton = within(column).getByRole("button", {
-      name: /add a card/i,
+    expect(await screen.findByTestId("board-load-error")).toBeInTheDocument();
+  });
+
+  it("renders the board it was given, not a hardcoded one", async () => {
+    await renderBoard();
+    expect(screen.getAllByTestId(/^column-/)).toHaveLength(2);
+    expect(within(columnA()).getByText("First")).toBeInTheDocument();
+  });
+
+  it("saves an added card", async () => {
+    await renderBoard();
+    await userEvent.click(within(columnA()).getByRole("button", { name: /add a card/i }));
+    await userEvent.type(within(columnA()).getByPlaceholderText(/card title/i), "Third");
+    await userEvent.click(within(columnA()).getByRole("button", { name: /add card/i }));
+
+    await waitFor(() => expect(mockedPutBoard).toHaveBeenCalledTimes(1));
+    const saved = mockedPutBoard.mock.calls[0][0];
+    const added = Object.values(saved.cards).find((card) => card.title === "Third");
+    expect(added).toBeDefined();
+    expect(saved.columns[0].cardIds).toContain(added!.id);
+  });
+
+  it("saves a deleted card", async () => {
+    await renderBoard();
+    await userEvent.click(
+      within(columnA()).getByRole("button", { name: /delete first/i })
+    );
+
+    await waitFor(() => expect(mockedPutBoard).toHaveBeenCalledTimes(1));
+    const saved = mockedPutBoard.mock.calls[0][0];
+    expect(saved.cards["card-1"]).toBeUndefined();
+    expect(saved.columns[0].cardIds).toEqual(["card-2"]);
+  });
+
+  it("writes a rename once, not once per keystroke", async () => {
+    await renderBoard();
+    await userEvent.type(within(columnA()).getByLabelText("Column title"), "!!!");
+
+    // Three keystrokes, one write once the debounce elapses.
+    await waitFor(() => expect(mockedPutBoard).toHaveBeenCalledTimes(1), {
+      timeout: 3000,
     });
-    await userEvent.click(addButton);
+    expect(mockedPutBoard.mock.calls[0][0].columns[0].title).toBe("Backlog!!!");
+  });
 
-    const titleInput = within(column).getByPlaceholderText(/card title/i);
-    await userEvent.type(titleInput, "New card");
-    const detailsInput = within(column).getByPlaceholderText(/details/i);
-    await userEvent.type(detailsInput, "Notes");
+  it("restores the board and warns when a save fails", async () => {
+    await renderBoard();
+    mockedPutBoard.mockRejectedValue(new Error("500"));
 
-    await userEvent.click(within(column).getByRole("button", { name: /add card/i }));
+    await userEvent.click(
+      within(columnA()).getByRole("button", { name: /delete first/i })
+    );
 
-    expect(within(column).getByText("New card")).toBeInTheDocument();
-
-    const deleteButton = within(column).getByRole("button", {
-      name: /delete new card/i,
-    });
-    await userEvent.click(deleteButton);
-
-    expect(within(column).queryByText("New card")).not.toBeInTheDocument();
+    expect(await screen.findByTestId("board-error")).toHaveTextContent(
+      /could not save/i
+    );
+    // The optimistic delete is undone.
+    expect(within(columnA()).getByText("First")).toBeInTheDocument();
   });
 });

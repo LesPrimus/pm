@@ -12,7 +12,7 @@ Rules for the agent:
 - Coding standards from the root `AGENTS.md` apply throughout: latest idiomatic libraries, simplest thing that
   works, no speculative features, no emojis, root-cause fixes only.
 
-Status: Parts 1 to 6 complete. Part 7 next.
+Status: Parts 1 to 7 complete. Part 8 next.
 
 ## Target repo layout
 
@@ -250,13 +250,13 @@ Success criteria:
 
 Goal: the board is persistent, reading and writing through the API.
 
-- [ ] Extend `frontend/src/lib/api.ts` with `getBoard()` and `putBoard(board)`.
-- [ ] Load the board from the API after sign-in; show a loading state and an error state.
-- [ ] Persist every mutation (move, rename, add, delete) with an optimistic local update and a `PUT`.
-- [ ] Debounce column rename writes so typing does not fire a request per keystroke.
-- [ ] On a failed write, revert to the last server-confirmed board and show a non-blocking error.
-- [ ] Remove `initialData` from the frontend bundle; the backend owns seed data.
-- [ ] Update `frontend/AGENTS.md`.
+- [x] Extend `frontend/src/lib/api.ts` with `getBoard()` and `putBoard(board)`.
+- [x] Load the board from the API after sign-in; show a loading state and an error state.
+- [x] Persist every mutation (move, rename, add, delete) with an optimistic local update and a `PUT`.
+- [x] Debounce column rename writes so typing does not fire a request per keystroke.
+- [x] On a failed write, revert to the last server-confirmed board and show a non-blocking error.
+- [x] Remove `initialData` from the frontend bundle; the backend owns seed data.
+- [x] Update `frontend/AGENTS.md`.
 
 Tests:
 
