@@ -4,8 +4,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.auth import CurrentUser
 from app.api.auth import router as auth_router
-
-CREDENTIALS = {"username": "user", "password": "password"}
+from tests.conftest import CREDENTIALS
 
 
 def test_me_is_401_before_signing_in(client: TestClient) -> None:

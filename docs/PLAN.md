@@ -12,7 +12,7 @@ Rules for the agent:
 - Coding standards from the root `AGENTS.md` apply throughout: latest idiomatic libraries, simplest thing that
   works, no speculative features, no emojis, root-cause fixes only.
 
-Status: Parts 1 to 4 complete. Part 5 written, awaiting sign-off.
+Status: Parts 1 to 6 complete. Part 7 next.
 
 ## Target repo layout
 
@@ -202,7 +202,7 @@ Goal: an agreed, documented database design. No implementation in this part.
       SQLite file lives, how it is created on first run, seeding of a new user's board from the demo data,
       and how a future migration to multiple boards or normalized tables would work.
 - [x] Confirm the design supports multiple users even though the MVP has one.
-- [ ] Get user sign-off before Part 6.
+- [x] Get user sign-off before Part 6.
 
 Tests: none (documentation only). `docs/schema.json` must parse as valid JSON.
 
@@ -218,15 +218,15 @@ Success criteria:
 
 Goal: API routes that read and change the Kanban for the signed-in user, backed by SQLite.
 
-- [ ] Add `backend/app/db.py`: connection helper, `CREATE TABLE IF NOT EXISTS` bootstrap on startup, foreign
+- [x] Add `backend/app/db.py`: connection helper, `CREATE TABLE IF NOT EXISTS` bootstrap on startup, foreign
       keys on. The database file and its parent directory are created if absent.
-- [ ] Add `backend/app/models.py`: Pydantic models `Card`, `Column`, `BoardData` mirroring the frontend types.
-- [ ] Seed a board from the demo data the first time a user has none.
-- [ ] Add `backend/app/api/board.py`: `GET /api/board` returns the current user's board; `PUT /api/board`
+- [x] Add `backend/app/models.py`: Pydantic models `Card`, `Column`, `BoardData` mirroring the frontend types.
+- [x] Seed a board from the demo data the first time a user has none.
+- [x] Add `backend/app/api/board.py`: `GET /api/board` returns the current user's board; `PUT /api/board`
       replaces it after validation. Both require auth.
-- [ ] Validate on write: unique card and column ids, every `cardIds` entry present in `cards`, no orphan cards,
+- [x] Validate on write: unique card and column ids, every `cardIds` entry present in `cards`, no orphan cards,
       no duplicate card across columns. Reject with 422.
-- [ ] Update `backend/AGENTS.md`.
+- [x] Update `backend/AGENTS.md`.
 
 Tests (backend pytest, against a temporary database file per test):
 

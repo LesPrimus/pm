@@ -15,6 +15,10 @@ def _default_static_dir() -> Path:
 
 STATIC_DIR = Path(os.getenv("STATIC_DIR") or _default_static_dir())
 
+# The SQLite file. Set explicitly in the image: the backend lives at /app/app there,
+# so walking up from the source lands on / rather than the mounted volume.
+DATABASE_PATH = Path(os.getenv("DATABASE_PATH") or REPO_ROOT / "data" / "pm.db")
+
 # Signs the session cookie. Set a real value in .env for anything beyond local use.
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-not-for-production")
 

@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -6,12 +7,22 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.auth import router as auth_router
+from app.api.board import router as board_router
 from app.api.health import router as health_router
-from app.config import DEV_CORS_ORIGIN, SECRET_KEY, STATIC_DIR
+from app.config import DATABASE_PATH, DEV_CORS_ORIGIN, SECRET_KEY, STATIC_DIR
+from app.db import init_db
 
 
-def create_app(static_dir: Path = STATIC_DIR) -> FastAPI:
-    app = FastAPI(title="Project Management MVP")
+def create_app(
+    static_dir: Path = STATIC_DIR, database_path: Path = DATABASE_PATH
+) -> FastAPI:
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        init_db(database_path)
+        yield
+
+    app = FastAPI(title="Project Management MVP", lifespan=lifespan)
+    app.state.database_path = database_path
 
     if DEV_CORS_ORIGIN:
         app.add_middleware(
@@ -26,6 +37,7 @@ def create_app(static_dir: Path = STATIC_DIR) -> FastAPI:
 
     app.include_router(health_router, prefix="/api")
     app.include_router(auth_router, prefix="/api")
+    app.include_router(board_router, prefix="/api")
 
     @app.api_route(
         "/api/{path:path}",

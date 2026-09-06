@@ -16,6 +16,8 @@ export default defineConfig({
     command:
       "npm run build && uv run --directory ../backend uvicorn app.main:app --host 127.0.0.1 --port 8000",
     url: "http://127.0.0.1:8000/api/health",
+    // Its own database, so a test run cannot overwrite the board you were using.
+    env: { DATABASE_PATH: "../data/e2e.db" },
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
   },

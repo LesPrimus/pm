@@ -15,7 +15,8 @@ WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     UV_PYTHON_DOWNLOADS=never \
-    PATH="/app/.venv/bin:$PATH"
+    PATH="/app/.venv/bin:$PATH" \
+    DATABASE_PATH=/app/data/pm.db
 
 # Dependencies first, so app edits do not invalidate the installed layer.
 COPY backend/pyproject.toml backend/uv.lock backend/.python-version ./

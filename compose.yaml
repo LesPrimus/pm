@@ -3,6 +3,9 @@ services:
     build: .
     image: pm-app
     container_name: pm-app
+    # Write the bind mounted database as the host user, not root, so a local
+    # uvicorn run can still open the same file. The start scripts export these.
+    user: "${APP_UID:-1000}:${APP_GID:-1000}"
     ports:
       - "8000:8000"
     volumes:
