@@ -2,13 +2,14 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { KanbanBoard } from "@/components/KanbanBoard";
-import { getBoard, getHealth, putBoard } from "@/lib/api";
+import { getBoard, getHealth, putBoard, sendChat } from "@/lib/api";
 import type { BoardData } from "@/lib/kanban";
 
 vi.mock("@/lib/api", () => ({
   getHealth: vi.fn(),
   getBoard: vi.fn(),
   putBoard: vi.fn(),
+  sendChat: vi.fn(),
 }));
 
 const mockedGetBoard = vi.mocked(getBoard);
@@ -108,5 +109,63 @@ describe("KanbanBoard", () => {
     );
     // The optimistic delete is undone.
     expect(within(columnA()).getByText("First")).toBeInTheDocument();
+  });
+});
+
+describe("KanbanBoard and the assistant", () => {
+  const MOVED: BoardData = {
+    ...LOADED,
+    columns: [
+      { id: "col-a", title: "Backlog", cardIds: ["card-2"] },
+      { id: "col-b", title: "Done", cardIds: ["card-1"] },
+    ],
+  };
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.mocked(getHealth).mockResolvedValue({ status: "ok" });
+    mockedGetBoard.mockResolvedValue(LOADED);
+    mockedPutBoard.mockImplementation(async (board) => board);
+  });
+
+  const chat = async (message: string) => {
+    await userEvent.click(screen.getByTestId("chat-toggle"));
+    await userEvent.type(screen.getByLabelText(/message the assistant/i), message);
+    await userEvent.click(screen.getByRole("button", { name: /send/i }));
+  };
+
+  it("shows a board the AI changed, without saving it again", async () => {
+    vi.mocked(sendChat).mockResolvedValue({
+      reply: "Moved it to Done.",
+      board_updated: true,
+      board: MOVED,
+    });
+    await renderBoard();
+    expect(within(columnA()).getByText("First")).toBeInTheDocument();
+
+    await chat("Move First to Done");
+
+    await waitFor(() =>
+      expect(within(screen.getByTestId("column-col-b")).getByText("First")).toBeInTheDocument()
+    );
+    expect(within(columnA()).queryByText("First")).not.toBeInTheDocument();
+    // The chat endpoint already stored it, so a PUT would be a wasted round trip.
+    expect(mockedPutBoard).not.toHaveBeenCalled();
+  });
+
+  it("leaves the board alone when the AI only answered", async () => {
+    vi.mocked(sendChat).mockResolvedValue({
+      reply: "Two cards.",
+      board_updated: false,
+      board: MOVED,
+    });
+    await renderBoard();
+
+    await chat("How many cards?");
+
+    await waitFor(() => expect(sendChat).toHaveBeenCalled());
+    // The board in the reply is ignored when board_updated is false.
+    expect(within(columnA()).getByText("First")).toBeInTheDocument();
+    expect(mockedPutBoard).not.toHaveBeenCalled();
   });
 });

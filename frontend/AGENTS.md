@@ -36,6 +36,7 @@ src/
     AuthGate.tsx           Decides between the login screen and the board. Owns the session state.
     LoginScreen.tsx        Username and password form. One error message for either wrong field.
     KanbanBoard.tsx        Client component. Owns all board state and every mutation handler.
+    ChatSidebar.tsx        Collapsible AI panel. Owns the conversation and posts to /api/chat.
     KanbanColumn.tsx       One column: droppable target, rename input, card list, NewCardForm.
     KanbanCard.tsx         One sortable card with a Remove button.
     KanbanCardPreview.tsx  Non-interactive card used inside the DragOverlay.
@@ -49,10 +50,11 @@ src/
     vitest.d.ts     Globals typing.
 tests/
   kanban.spec.ts    Playwright e2e against the served build.
+  chat.spec.ts      The sidebar, with /api/chat mocked so the run is deterministic.
 ```
 
 Unit tests sit next to what they cover: `api.test.ts`, `ApiStatus.test.tsx`, `KanbanColumn.test.tsx`,
-`NewCardForm.test.tsx`, `KanbanBoard.test.tsx`, `kanban.test.ts`.
+`NewCardForm.test.tsx`, `KanbanBoard.test.tsx`, `ChatSidebar.test.tsx`, `kanban.test.ts`.
 
 ## Data model (`src/lib/kanban.ts`)
 
@@ -124,6 +126,10 @@ immediately and writes the whole board with `PUT /api/board`.
 
 `KanbanBoard` renders three states: `board-loading`, `board-load-error` (with a Retry), and the board.
 
+`replace(board)` is the other way in. It adopts a board without writing it back, because `POST /api/chat`
+has already saved the AI's board, and it drops any debounced write: that write was computed from the older
+board, so letting it land would undo the change that just arrived.
+
 ## API client
 
 `src/lib/api.ts` is the single entry point to the backend.
@@ -139,6 +145,23 @@ server origin. Every request sends `credentials: "include"` so the Part 4 sessio
 Read the env var lazily inside a function, not once at module scope: NextJS inlines it at build time either
 way, and lazy reads let tests stub it.
 
+## Chat sidebar
+
+`ChatSidebar` owns the conversation; the backend is stateless for chat, so the whole history is sent with
+every message. It sits beside the board rather than over it, so the board stays visible and usable while a
+request is in flight. Collapsed, it is a narrow rail and the board keeps its full width (271px columns at
+1600px, unchanged from Part 9); open, it takes 380px and columns go to 215px.
+
+- The history posted is exactly what is on screen, mapped down to `{role, content}`. `changedBoard` is a
+  display-only flag and is stripped before sending.
+- A reply with `board_updated` is handed to `useBoard`'s `replace`, so the board changes with no reload and
+  no second write. The turn gets a yellow border and a "Board updated" tag.
+- A failed send takes the unsent message back out of the thread and puts it in the box, so retrying is one
+  click rather than retyping.
+
+The model is told to reply in plain text. Without that it returns markdown, and the sidebar shows the text
+as typed, so `**Release notes**` reached the screen with the asterisks in it.
+
 ## Test hooks
 
 - Columns: `data-testid="column-<columnId>"`
@@ -146,6 +169,8 @@ way, and lazy reads let tests stub it.
 - Rename input: `aria-label="Column title"`
 - Delete button: `aria-label="Delete <card title>"`
 
+- Chat: `data-testid` of `chat-toggle` (open and close), `chat-panel`, `chat-message` (with `data-role`),
+  `chat-pending`, `chat-error`, `chat-board-updated`. Input is `aria-label="Message the assistant"`.
 - API status chip: `data-testid="api-status"` with `data-state` of `checking`, `ok`, or `error`
 - Board states: `data-testid` of `board-loading`, `board-load-error`, `board-error` (a failed save)
 - Signed in user: `data-testid="signed-in-user"`; session check splash: `data-testid="auth-checking"`
@@ -174,7 +199,8 @@ npm run test:e2e     # playwright: builds the export, serves it with FastAPI on 
 npm run test:all
 ```
 
-## Known gaps (addressed by docs/PLAN.md)
+## Known gaps
 
-- No AI chat sidebar (Part 10).
 - Saving is last write wins for the whole board. One user with one board, so this is not a live problem.
+- The conversation lives in React state only, so a reload starts a fresh thread. The board persists; the
+  chat does not.

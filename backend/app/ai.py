@@ -2,9 +2,10 @@
 
 from fastapi import HTTPException
 from openai import OpenAI, OpenAIError
+from pydantic import ValidationError
 
 from app.config import AI_MODEL, OPENROUTER_API_KEY, OPENROUTER_BASE_URL
-from app.models import BoardData, ChatMessage, ChatReply
+from app.models import AiBoard, BoardData, ChatMessage, ChatReply
 
 SYSTEM_PROMPT = """\
 You are the assistant inside a Kanban project management app. You answer questions
@@ -29,7 +30,8 @@ Rules for changing the board:
 
 Set `board` to null when the user is only asking a question, and put your answer in
 `reply`. When you do change the board, keep `reply` to one short sentence saying what
-you did.
+you did. Write `reply` as plain text: it is shown as typed, so markdown just puts
+asterisks on the screen.
 
 This is the current board:
 
@@ -52,7 +54,12 @@ def chat(board: BoardData, message: str, history: list[ChatMessage]) -> ChatRepl
     messages = [
         {
             "role": "system",
-            "content": SYSTEM_PROMPT.format(board=board.model_dump_json()),
+            # Shown in the same shape the answer must take. Given the board with
+            # cards as a dict, the model copies that shape back and the strict
+            # schema does not stop it: OpenRouter treats it as a hint, not a rule.
+            "content": SYSTEM_PROMPT.format(
+                board=AiBoard.from_board(board).model_dump_json()
+            ),
         },
         *({"role": turn.role, "content": turn.content} for turn in history),
         {"role": "user", "content": message},
@@ -67,6 +74,13 @@ def chat(board: BoardData, message: str, history: list[ChatMessage]) -> ChatRepl
         # The key is present but the call did not get through.
         raise HTTPException(
             status_code=502, detail=f"AI request failed: {exc}"
+        ) from exc
+    except ValidationError as exc:
+        # parse() raises when the answer does not match the schema, which happens
+        # because the schema is not enforced end to end. A bad shape is the AI's
+        # failure, not the app's, so it is a 502 rather than a stack trace.
+        raise HTTPException(
+            status_code=502, detail=f"The AI returned an unusable board: {exc}"
         ) from exc
 
     parsed = completion.choices[0].message.parsed

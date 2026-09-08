@@ -30,7 +30,12 @@ CREATE TABLE IF NOT EXISTS boards (
 
 def connect(path: Path) -> sqlite3.Connection:
     path.parent.mkdir(parents=True, exist_ok=True)
-    connection = sqlite3.connect(path)
+    # check_same_thread=False because FastAPI runs a sync dependency's setup, the
+    # endpoint, and its teardown as separate threadpool jobs, and anyio does not
+    # pin those to one worker. Without it, concurrent requests 500 in connection
+    # .close(). Safe here: the connection is per request, so only one thread is
+    # ever using it at a time.
+    connection = sqlite3.connect(path, check_same_thread=False)
     connection.row_factory = sqlite3.Row
     # Per connection, and not stored in the file: without this the foreign keys
     # and the cascade are silently ignored.

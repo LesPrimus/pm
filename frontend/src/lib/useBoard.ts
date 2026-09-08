@@ -70,6 +70,20 @@ export const useBoard = () => {
   }, [flush]);
 
   /**
+   * Adopt a board the server already holds, with no write back. The chat endpoint
+   * saves the AI's board itself, so writing it again would be a pointless round
+   * trip. Any debounced write is dropped: it was computed from the older board,
+   * and letting it land would undo the change that just arrived.
+   */
+  const replace = useCallback((next: BoardData) => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+    pending.current = null;
+    confirmed.current = next;
+    setBoard(next);
+  }, []);
+
+  /**
    * Show `next` immediately, then persist it. Renames pass a delay, so typing a
    * column title is one write rather than one per keystroke; the whole board is
    * sent either way, so a later edit simply supersedes a pending one.
@@ -90,5 +104,5 @@ export const useBoard = () => {
     [save]
   );
 
-  return { board, status, error, commit, flush };
+  return { board, status, error, commit, flush, replace };
 };

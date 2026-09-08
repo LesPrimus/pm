@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from openai import APIConnectionError
 
 from app import ai
-from app.models import ChatMessage, ChatReply
+from app.models import AiBoard, ChatMessage, ChatReply
 from app.seed import SEED_BOARD
 
 KEY = "test-key"
@@ -62,8 +62,10 @@ def test_chat_sends_the_board_the_history_and_the_model(
 
     system, *rest = sent["messages"]
     assert system["role"] == "system"
-    # The whole board goes with every call, so the model never guesses at ids.
-    assert SEED_BOARD.model_dump_json() in system["content"]
+    # The whole board goes with every call, so the model never guesses at ids, and
+    # it goes in the shape the answer must take, not the stored shape.
+    assert AiBoard.from_board(SEED_BOARD).model_dump_json() in system["content"]
+    assert SEED_BOARD.model_dump_json() not in system["content"]
     assert rest == [
         {"role": "user", "content": "hello"},
         {"role": "assistant", "content": "hi"},
@@ -82,6 +84,22 @@ def test_a_transport_failure_is_a_502(openai_class: MagicMock) -> None:
 
 def test_an_unparsed_answer_is_a_502(openai_class: MagicMock) -> None:
     openai_class.return_value.chat.completions.parse.return_value = completion(None)
+    with pytest.raises(HTTPException) as raised:
+        ai.chat(SEED_BOARD, "anything", [])
+    assert raised.value.status_code == 502
+
+
+def test_an_answer_that_ignores_the_schema_is_a_502(openai_class: MagicMock) -> None:
+    # Seen live: the model returns cards as a dict rather than a list, because the
+    # strict schema is a hint to OpenRouter, not a rule. parse() raises, and that
+    # has to read as an upstream failure, not a 500.
+    def bad_shape(**_: object) -> None:
+        ChatReply.model_validate_json(
+            '{"reply":"ok","board":{"columns":[],"cards":{}}}'
+        )
+
+    openai_class.return_value.chat.completions.parse.side_effect = bad_shape
+
     with pytest.raises(HTTPException) as raised:
         ai.chat(SEED_BOARD, "anything", [])
     assert raised.value.status_code == 502

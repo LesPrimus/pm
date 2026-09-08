@@ -62,6 +62,10 @@ class AiBoard(BaseModel):
     columns: list[Column]
     cards: list[Card]
 
+    @classmethod
+    def from_board(cls, board: BoardData) -> Self:
+        return cls(columns=board.columns, cards=list(board.cards.values()))
+
     def to_board(self) -> BoardData:
         cards = {card.id: card for card in self.cards}
         if len(cards) != len(self.cards):

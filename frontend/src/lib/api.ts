@@ -50,3 +50,17 @@ export const putBoard = (board: BoardData, keepalive = false) =>
     body: JSON.stringify(board),
     keepalive,
   });
+
+export type ChatMessage = { role: "user" | "assistant"; content: string };
+
+export type ChatResponse = {
+  reply: string;
+  /** True when the AI changed the board. The backend has already saved it. */
+  board_updated: boolean;
+  /** The stored board, changed or not, so the client can resync from any reply. */
+  board: BoardData;
+};
+
+/** Ask the AI about the board. The history is held by the client, not the server. */
+export const sendChat = (message: string, history: ChatMessage[]) =>
+  send<ChatResponse>("POST", "/api/chat", { message, history });

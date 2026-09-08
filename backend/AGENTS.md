@@ -88,6 +88,12 @@ Two things that bite:
   time. Skip it and the cascade and the foreign keys are silently ignored.
 - **A sqlite3 connection is not thread safe**, and FastAPI runs sync endpoints in a thread pool, so
   `get_connection` opens one per request and closes it after. Cheap for a local file.
+- **`connect` passes `check_same_thread=False`**, and must. FastAPI runs a sync dependency's setup, the
+  endpoint, and its teardown as three separate threadpool jobs, and anyio does not pin them to one worker,
+  so the connection is opened, used, and closed on different threads. Without the flag, 39 of 40 concurrent
+  `GET /api/board` calls returned 500 from `connection.close()`. It is safe because the connection is per
+  request: the steps are sequential, so only one thread ever touches it at a time. Serial requests hid this
+  for two parts, because the pool kept handing back the same thread.
 
 `create_app(static_dir, database_path)` takes the path, and stores it on `app.state`, so a test can point a
 whole app at a temporary file. There is no module level connection.
@@ -143,6 +149,15 @@ cannot make it edit a board that has since changed.
 
 Structured output goes through `client.chat.completions.parse(response_format=ChatReply)`, which builds a
 strict JSON schema from the model and parses the answer back.
+
+**The strict schema is a hint, not a rule.** OpenRouter passes it to the provider, and `openai/gpt-oss-120b`
+does not hard enforce it. Seen live: asked to move a card, it returned `cards` as a dict keyed by id instead
+of the list the schema asks for, and `parse` raised. So two things hold the line:
+
+- The board in the prompt is serialised as an `AiBoard`, not a `BoardData`. Shown the board with `cards` as
+  a dict, the model copies that shape into its answer. Prompt and schema have to agree, or the example wins.
+- `chat` catches the `ValidationError` from `parse` and returns **502**. A model that ignores the schema is
+  an upstream failure, not a 500.
 
 **`ChatReply.board` is an `AiBoard`, not a `BoardData`, and the difference matters.** `BoardData.cards` is a
 dict keyed by card id, and a strict JSON schema cannot describe an object with arbitrary keys: every object

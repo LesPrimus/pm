@@ -12,7 +12,7 @@ Rules for the agent:
 - Coding standards from the root `AGENTS.md` apply throughout: latest idiomatic libraries, simplest thing that
   works, no speculative features, no emojis, root-cause fixes only.
 
-Status: Parts 1 to 9 complete. Part 10 next.
+Status: All 10 parts complete.
 
 ## Target repo layout
 
@@ -341,13 +341,15 @@ Success criteria:
 
 Goal: a chat sidebar in the UI that can drive the board.
 
-- [ ] Build a `ChatSidebar` component: message list, input, send button, pending indicator, error state.
-- [ ] Style it with the brand palette: purple submit, blue accents, yellow highlight for AI-applied changes.
+- [x] Build a `ChatSidebar` component: message list, input, send button, pending indicator, error state.
+- [x] Style it with the brand palette: purple submit, blue accents, yellow highlight for AI-applied changes.
       Collapsible, so the board keeps its width when the sidebar is closed.
-- [ ] Keep conversation history in React state and send it with each message.
-- [ ] When the response has `board_updated`, apply the returned board immediately and show a brief confirmation.
-- [ ] Keep the board readable while a request is in flight; do not block board interaction.
-- [ ] Update `frontend/AGENTS.md`.
+- [x] Keep conversation history in React state and send it with each message.
+- [x] When the response has `board_updated`, apply the returned board immediately and show a brief confirmation.
+- [x] Keep the board readable while a request is in flight; do not block board interaction.
+      The sidebar sits beside the board, not over it. Closed, columns stay at their Part 9 width
+      (271px at a 1600px viewport); open, they go to 215px.
+- [x] Update `frontend/AGENTS.md`.
 
 Tests:
 
@@ -357,9 +359,33 @@ Tests:
 - E2E (mocked `/api/chat` route so it is deterministic): sign in, open the sidebar, send a message, see the
   reply, and see the board update without a manual reload.
 - Live check (manual): a real prompt that moves a card updates the board on screen and survives a reload.
+  Done: "Move the QA card to Done" answered "Moved the QA card to Done.", card-6 appeared in Done with no
+  reload, and was still in Done after one. A second live run held a two-turn conversation: after adding a
+  card, "What did you just add, and to which column?" was answered correctly from the history.
 
 Success criteria:
 
 - The sidebar looks like part of the product, not a bolt-on.
 - An AI board change appears in the UI with no manual refresh and persists across reload.
 - All suites pass.
+
+---
+
+## Found while building Part 10
+
+Two defects that predate Part 10, both fixed here rather than left behind.
+
+1. **The strict JSON schema is not enforced.** OpenRouter passes `response_format` to the provider and
+   `openai/gpt-oss-120b` treats it as a hint. Asked to move a card it returned `cards` as a dict keyed by id
+   rather than the list the schema asks for, and `parse` raised a `ValidationError` that surfaced as a 500.
+   Root cause: the prompt showed the board as a `BoardData` (cards as a dict) while the schema asked for an
+   `AiBoard` (cards as a list), and the model copied the shape it was shown. Fixed by serialising the board
+   in the prompt as an `AiBoard`, so prompt and schema agree, and by turning a `ValidationError` from `parse`
+   into a 502. Part 9's live checks passed by luck; this is not a Part 10 regression.
+
+2. **SQLite connections broke under concurrency.** `GET /api/board` returned 500 for 39 of 40 concurrent
+   requests: `sqlite3.connect` defaults to `check_same_thread=True`, but FastAPI runs a sync dependency's
+   setup, the endpoint, and its teardown as three separate threadpool jobs on different workers. Serial
+   requests hid it from Parts 6 to 9 because the pool kept handing back the same thread. Fixed with
+   `check_same_thread=False`, which is safe because the connection is per request. Covered by
+   `test_a_connection_survives_a_thread_hop`, which fails without the flag.

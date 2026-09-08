@@ -1,8 +1,10 @@
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 
 from app.api.auth import require_user
+from app.db import connect, get_or_create_user_id, init_db
 from app.main import create_app
 from app.seed import SEED_BOARD
 from tests.conftest import CREDENTIALS
@@ -119,3 +121,13 @@ def test_the_board_survives_a_restart(static_dir: Path, database_path: Path) -> 
     with TestClient(create_app(static_dir, database_path)) as restarted:
         restarted.post("/api/auth/login", json=CREDENTIALS)
         assert restarted.get("/api/board").json() == MINIMAL
+
+
+def test_a_connection_survives_a_thread_hop(database_path: Path) -> None:
+    """FastAPI opens, uses, and closes a sync dependency on different worker
+    threads. A connection pinned to its creating thread 500s under concurrency."""
+    init_db(database_path)
+    connection = connect(database_path)
+    with ThreadPoolExecutor(max_workers=1) as elsewhere:
+        elsewhere.submit(get_or_create_user_id, connection, "ada").result()
+        elsewhere.submit(connection.close).result()
