@@ -12,22 +12,23 @@ app/
   main.py         create_app factory: session middleware, CORS (dev only), routers,
                   API 404 guard, static mount
   config.py       Settings read from the environment
-  ai.py           OpenRouter client, called through the OpenAI SDK
+  ai.py           OpenRouter client, the system prompt, and the structured chat call
   db.py           SQLite: schema, connections, and the board queries
-  models.py       Pydantic Card, Column, BoardData, and the board invariants
+  models.py       Pydantic Card, Column, BoardData, the board invariants, and the chat shapes
   seed.py         The board a new user starts with
   api/
     health.py     GET /api/health
     auth.py       Login, logout, me, and the require_user dependency
     board.py      GET and PUT /api/board
-    ai.py         POST /api/ai/ping, a temporary connectivity check
+    chat.py       POST /api/chat
   static/         The built NextJS export, copied in by Docker. Not in git.
 tests/
   conftest.py     Fixtures: a stand-in export directory and a TestClient over it
   test_health.py  Health endpoint
   test_auth.py    Sign in, sign out, session, and the route guard
   test_board.py   Board routes, seeding, validation, isolation, and persistence
-  test_ai.py      The OpenRouter client and the ping route, with the SDK mocked
+  test_ai.py      The OpenRouter client and the structured call, with the SDK mocked
+  test_chat.py    The chat route: saving, rejecting, history, and the session guard
   test_static.py  Static serving and the API 404 guard
   test_app.py     The app still runs when the frontend has not been built
 ```
@@ -58,8 +59,9 @@ instead of requiring a real build. `app = create_app()` at module scope keeps `u
 ## Auth
 
 Session cookie auth via Starlette's `SessionMiddleware`, which signs the cookie with `SECRET_KEY`. There is
-no user table yet: `login` compares against `AUTH_USERNAME` and `AUTH_PASSWORD` with `secrets.compare_digest`
-and stores the username in the session. Part 6 moves this to the database.
+no lookup against the database: `login` compares against `AUTH_USERNAME` and `AUTH_PASSWORD` with
+`secrets.compare_digest` and stores the username in the session. The `users` row exists and the board hangs
+off it, but `password_hash` stays NULL. Moving the credential check onto it is future work, not MVP scope.
 
 | Route | Behaviour |
 | --- | --- |
@@ -109,11 +111,12 @@ enforces what a schema cannot:
 4. column ids are unique
 
 Because the check lives on the model, `PUT /api/board` returns 422 for a bad board with no extra code, and
-the AI's structured output in Part 9 gets the identical check for free. A rejected write leaves the stored
-board untouched.
+the AI's structured output gets the identical check for free. A rejected write leaves the stored board
+untouched.
 
 `seed.py` holds the board a new user gets, generated from the frontend's `initialData` and verified equal to
-it. After Part 7 removes `initialData` from the bundle it is the only definition of a fresh board.
+it. Part 7 removed `initialData` from the bundle, so it is now the only definition of a fresh board.
+`db.load_or_seed_board` applies it on first read, shared by `GET /api/board` and `POST /api/chat`.
 
 ## AI
 
@@ -125,11 +128,32 @@ rather than failing deeper with something unreadable. A call that gets no answer
 kept apart on purpose: 503 means the app is not configured, 502 means it is configured but the request did
 not get through.
 
-`POST /api/ai/ping` asks for 2+2 and requires a session, so an unauthenticated caller cannot spend credits.
-It is temporary and comes out in Part 9 when `/api/chat` lands.
-
 The test suite replaces `ai.OpenAI` outright, so it needs no network and no key. Nothing in the suite makes
 a real call: the live check is run by hand.
+
+## Chat
+
+`POST /api/chat` takes `{message, history}` and returns `{reply, board_updated, board}`. `board` is always
+the stored board, so the client can resync from any reply. History comes from the client on every call and
+the backend keeps no chat state, which is what lets a static export own the conversation.
+
+`ai.chat` sends one system message holding `SYSTEM_PROMPT` and the current board JSON, then the history, then
+the new message. The board goes with every call, so the model never has to guess an id, and a stale history
+cannot make it edit a board that has since changed.
+
+Structured output goes through `client.chat.completions.parse(response_format=ChatReply)`, which builds a
+strict JSON schema from the model and parses the answer back.
+
+**`ChatReply.board` is an `AiBoard`, not a `BoardData`, and the difference matters.** `BoardData.cards` is a
+dict keyed by card id, and a strict JSON schema cannot describe an object with arbitrary keys: every object
+needs `additionalProperties: false`. So `AiBoard.cards` is a list, and `AiBoard.to_board()` keys it by id.
+That conversion is also where a duplicate card id is caught, since a list can hold one where a dict cannot
+and keying it would silently drop a card.
+
+`to_board()` then builds a `BoardData`, so the AI board goes through the identical invariants as
+`PUT /api/board`. The route catches `ValueError` (pydantic's `ValidationError` is one), keeps the stored
+board, and answers with `board_updated: false` and the reply. A bad board costs the user an answer about
+their board, never the board itself.
 
 ## Configuration
 
@@ -169,4 +193,3 @@ step when bumping.
 ## Notes
 
 - `httpx2` is the test HTTP client. Starlette's `TestClient` deprecates plain `httpx`.
-- Coming in later parts: chat with structured outputs (Part 9).

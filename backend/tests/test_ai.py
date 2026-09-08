@@ -3,18 +3,20 @@ from unittest.mock import MagicMock
 
 import pytest
 from fastapi import HTTPException
-from fastapi.testclient import TestClient
 from openai import APIConnectionError
 
 from app import ai
+from app.models import ChatMessage, ChatReply
+from app.seed import SEED_BOARD
 
 KEY = "test-key"
 
 
-def completion(text: str) -> SimpleNamespace:
-    """The slice of the SDK response that ask() reads."""
-    message = SimpleNamespace(content=text)
-    return SimpleNamespace(choices=[SimpleNamespace(message=message)])
+def completion(reply: ChatReply | None) -> SimpleNamespace:
+    """The slice of the SDK response that chat() reads."""
+    return SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(parsed=reply))]
+    )
 
 
 @pytest.fixture
@@ -41,49 +43,45 @@ def test_a_missing_key_is_a_503(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "OPENROUTER_API_KEY" in raised.value.detail
 
 
-def test_ask_uses_the_configured_model(
+def test_chat_sends_the_board_the_history_and_the_model(
     openai_class: MagicMock, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(ai, "AI_MODEL", "openai/gpt-oss-120b")
-    create = openai_class.return_value.chat.completions.create
-    create.return_value = completion("4")
+    parse = openai_class.return_value.chat.completions.parse
+    parse.return_value = completion(ChatReply(reply="Eight.", board=None))
 
-    assert ai.ask("What is 2+2?") == "4"
+    history = [
+        ChatMessage(role="user", content="hello"),
+        ChatMessage(role="assistant", content="hi"),
+    ]
+    assert ai.chat(SEED_BOARD, "How many cards?", history).reply == "Eight."
 
-    sent = create.call_args.kwargs
+    sent = parse.call_args.kwargs
     assert sent["model"] == "openai/gpt-oss-120b"
-    assert sent["messages"] == [{"role": "user", "content": "What is 2+2?"}]
+    assert sent["response_format"] is ChatReply
+
+    system, *rest = sent["messages"]
+    assert system["role"] == "system"
+    # The whole board goes with every call, so the model never guesses at ids.
+    assert SEED_BOARD.model_dump_json() in system["content"]
+    assert rest == [
+        {"role": "user", "content": "hello"},
+        {"role": "assistant", "content": "hi"},
+        {"role": "user", "content": "How many cards?"},
+    ]
 
 
 def test_a_transport_failure_is_a_502(openai_class: MagicMock) -> None:
-    openai_class.return_value.chat.completions.create.side_effect = APIConnectionError(
+    openai_class.return_value.chat.completions.parse.side_effect = APIConnectionError(
         request=MagicMock()
     )
     with pytest.raises(HTTPException) as raised:
-        ai.ask("anything")
+        ai.chat(SEED_BOARD, "anything", [])
     assert raised.value.status_code == 502
 
 
-def test_an_empty_answer_is_a_string(openai_class: MagicMock) -> None:
-    openai_class.return_value.chat.completions.create.return_value = completion(None)
-    assert ai.ask("anything") == ""
-
-
-def test_ping_returns_the_answer(
-    signed_in: TestClient, openai_class: MagicMock
-) -> None:
-    openai_class.return_value.chat.completions.create.return_value = completion("4")
-    response = signed_in.post("/api/ai/ping")
-    assert response.status_code == 200
-    assert response.json() == {"answer": "4"}
-
-
-def test_ping_requires_a_session(client: TestClient) -> None:
-    assert client.post("/api/ai/ping").status_code == 401
-
-
-def test_ping_reports_a_missing_key(
-    signed_in: TestClient, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(ai, "OPENROUTER_API_KEY", None)
-    assert signed_in.post("/api/ai/ping").status_code == 503
+def test_an_unparsed_answer_is_a_502(openai_class: MagicMock) -> None:
+    openai_class.return_value.chat.completions.parse.return_value = completion(None)
+    with pytest.raises(HTTPException) as raised:
+        ai.chat(SEED_BOARD, "anything", [])
+    assert raised.value.status_code == 502

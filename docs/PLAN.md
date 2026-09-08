@@ -12,7 +12,7 @@ Rules for the agent:
 - Coding standards from the root `AGENTS.md` apply throughout: latest idiomatic libraries, simplest thing that
   works, no speculative features, no emojis, root-cause fixes only.
 
-Status: Parts 1 to 8 complete. Part 9 next.
+Status: Parts 1 to 9 complete. Part 10 next.
 
 ## Target repo layout
 
@@ -302,17 +302,20 @@ Success criteria:
 Goal: a chat endpoint that sends the board JSON, the user's question, and the conversation history, and gets
 back a structured reply plus an optional board update.
 
-- [ ] Define the response model: `reply: str` and `board: BoardData | None` (null when no change is needed).
-- [ ] Call the model with `response_format` json_schema (strict) built from that Pydantic model.
-- [ ] Add `POST /api/chat`: accepts the user message and prior turns, loads the current board, calls the model,
+- [x] Define the response model: `reply: str` and `board: AiBoard | None` (null when no change is needed).
+      `AiBoard` carries the cards as a list, because a strict JSON schema cannot describe `BoardData.cards`,
+      an object with arbitrary keys. `AiBoard.to_board()` keys it by id and applies the `BoardData` invariants.
+- [x] Call the model with `response_format` json_schema (strict) built from that Pydantic model.
+- [x] Add `POST /api/chat`: accepts the user message and prior turns, loads the current board, calls the model,
       validates the returned board, saves it when present, and returns `{reply, board_updated, board}`.
-- [ ] Write the system prompt: describe the board schema, require ids to be preserved when editing existing
+- [x] Write the system prompt: describe the board schema, require ids to be preserved when editing existing
       cards, require new ids for new cards, and forbid inventing columns beyond the existing five.
-- [ ] Validate the AI board with the same rules as `PUT /api/board`; on failure keep the stored board, return
+- [x] Validate the AI board with the same rules as `PUT /api/board`; on failure keep the stored board, return
       the reply, and set `board_updated: false`.
-- [ ] Store conversation history client-side and pass it in; the backend stays stateless for chat.
-- [ ] Remove the temporary `/api/ai/ping` route.
-- [ ] Update `backend/AGENTS.md`.
+- [x] Store conversation history client-side and pass it in; the backend stays stateless for chat.
+      `POST /api/chat` takes `history` on every call and keeps none. Part 10 holds it in React state.
+- [x] Remove the temporary `/api/ai/ping` route.
+- [x] Update `backend/AGENTS.md`.
 
 Tests (backend, model mocked):
 
@@ -322,7 +325,10 @@ Tests (backend, model mocked):
 - Conversation history is forwarded to the model in order.
 - The board JSON is included in the request sent to the model.
 - `/api/chat` returns 401 when anonymous.
-- Live check (manual): ask "move the QA card to Done" and confirm the stored board actually changes.
+- Live check (manual): ask "move the QA card to Done" and confirm the stored board actually changes. Done:
+  the reply was "Moved the QA card to Done.", `card-6` left `col-review` for `col-done`, and the following
+  `GET /api/board` returned the moved board. A question-only prompt came back with `board_updated: false`
+  and the board untouched.
 
 Success criteria:
 

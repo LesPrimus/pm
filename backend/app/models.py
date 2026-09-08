@@ -1,6 +1,6 @@
-"""The board, mirroring BoardData in frontend/src/lib/kanban.ts."""
+"""The board, mirroring BoardData in frontend/src/lib/kanban.ts, and the chat shapes."""
 
-from typing import Self
+from typing import Literal, Self
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -45,3 +45,32 @@ class BoardData(BaseModel):
             raise ValueError(f"cards not keyed by their own id: {mismatched}")
 
         return self
+
+
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class AiBoard(BaseModel):
+    """The board as the model returns it: cards as a list rather than a dict.
+
+    A strict JSON schema cannot describe an object with arbitrary keys, so `cards`
+    is a list here and `to_board` keys it by id and applies the BoardData invariants.
+    """
+
+    columns: list[Column]
+    cards: list[Card]
+
+    def to_board(self) -> BoardData:
+        cards = {card.id: card for card in self.cards}
+        if len(cards) != len(self.cards):
+            raise ValueError("duplicate card id")
+        return BoardData(columns=self.columns, cards=cards)
+
+
+class ChatReply(BaseModel):
+    """The model's structured answer. `board` is null when nothing needs changing."""
+
+    reply: str
+    board: AiBoard | None

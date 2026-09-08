@@ -9,6 +9,7 @@ from pathlib import Path
 from fastapi import Request
 
 from app.models import BoardData
+from app.seed import SEED_BOARD
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
@@ -83,3 +84,12 @@ def save_board(connection: sqlite3.Connection, user_id: int, board: BoardData) -
             """,
             (user_id, data),
         )
+
+
+def load_or_seed_board(connection: sqlite3.Connection, user_id: int) -> BoardData:
+    """The user's board, created from the seed the first time it is asked for."""
+    board = load_board(connection, user_id)
+    if board is None:
+        board = SEED_BOARD
+        save_board(connection, user_id, board)
+    return board

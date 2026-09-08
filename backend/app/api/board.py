@@ -4,9 +4,13 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 
 from app.api.auth import CurrentUser
-from app.db import get_connection, get_or_create_user_id, load_board, save_board
+from app.db import (
+    get_connection,
+    get_or_create_user_id,
+    load_or_seed_board,
+    save_board,
+)
 from app.models import BoardData
-from app.seed import SEED_BOARD
 
 router = APIRouter(prefix="/board", tags=["board"])
 
@@ -17,11 +21,7 @@ Connection = Annotated[sqlite3.Connection, Depends(get_connection)]
 def read_board(username: CurrentUser, connection: Connection) -> BoardData:
     """The user's board, seeded on first read."""
     user_id = get_or_create_user_id(connection, username)
-    board = load_board(connection, user_id)
-    if board is None:
-        board = SEED_BOARD
-        save_board(connection, user_id, board)
-    return board
+    return load_or_seed_board(connection, user_id)
 
 
 @router.put("")

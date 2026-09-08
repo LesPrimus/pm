@@ -6,9 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.api.ai import router as ai_router
 from app.api.auth import router as auth_router
 from app.api.board import router as board_router
+from app.api.chat import router as chat_router
 from app.api.health import router as health_router
 from app.config import DATABASE_PATH, DEV_CORS_ORIGIN, SECRET_KEY, STATIC_DIR
 from app.db import init_db
@@ -39,7 +39,7 @@ def create_app(
     app.include_router(health_router, prefix="/api")
     app.include_router(auth_router, prefix="/api")
     app.include_router(board_router, prefix="/api")
-    app.include_router(ai_router, prefix="/api")
+    app.include_router(chat_router, prefix="/api")
 
     @app.api_route(
         "/api/{path:path}",

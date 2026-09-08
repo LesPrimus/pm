@@ -5,9 +5,9 @@ Python FastAPI backend, packaged in one Docker container with a local SQLite dat
 
 ## Status
 
-Under construction, built in the parts listed in [docs/PLAN.md](docs/PLAN.md). Parts 1 to 8 are done:
-sign in with `user` / `password`, the Kanban board persists to SQLite, and the backend can reach an LLM
-through OpenRouter. The chat endpoint and the sidebar are Parts 9 and 10.
+Under construction, built in the parts listed in [docs/PLAN.md](docs/PLAN.md). Parts 1 to 9 are done:
+sign in with `user` / `password`, the Kanban board persists to SQLite, and `POST /api/chat` answers questions
+about the board and edits it through OpenRouter. The chat sidebar is Part 10.
 
 ## Layout
 

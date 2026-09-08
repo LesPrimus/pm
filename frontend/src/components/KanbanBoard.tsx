@@ -14,7 +14,7 @@ import {
 import { ApiStatus } from "@/components/ApiStatus";
 import { KanbanColumn } from "@/components/KanbanColumn";
 import { KanbanCardPreview } from "@/components/KanbanCardPreview";
-import { createId, moveCard, type BoardData } from "@/lib/kanban";
+import { createId, moveCard } from "@/lib/kanban";
 import { RENAME_DEBOUNCE_MS, useBoard } from "@/lib/useBoard";
 
 type KanbanBoardProps = {
