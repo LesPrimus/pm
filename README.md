@@ -5,8 +5,9 @@ Python FastAPI backend, packaged in one Docker container with a local SQLite dat
 
 ## Status
 
-Under construction, built in the parts listed in [docs/PLAN.md](docs/PLAN.md). Parts 1 to 7 are done:
-sign in with `user` / `password` and the Kanban board persists to SQLite. The AI sidebar is Parts 8 to 10.
+Under construction, built in the parts listed in [docs/PLAN.md](docs/PLAN.md). Parts 1 to 8 are done:
+sign in with `user` / `password`, the Kanban board persists to SQLite, and the backend can reach an LLM
+through OpenRouter. The chat endpoint and the sidebar are Parts 9 and 10.
 
 ## Layout
 
@@ -40,8 +41,8 @@ cd ../backend && uv run uvicorn app.main:app --port 8000
 
 ## Configuration
 
-Copy `.env.example` to `.env` in the project root and set `OPENROUTER_API_KEY`. Needed from Part 8 onward;
-the app starts without it. `.env` is gitignored.
+Copy `.env.example` to `.env` in the project root and set `OPENROUTER_API_KEY`. The app starts without it;
+the AI routes answer 503 until it is set. `.env` is gitignored.
 
 ## Development
 

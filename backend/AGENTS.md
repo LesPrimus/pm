@@ -12,6 +12,7 @@ app/
   main.py         create_app factory: session middleware, CORS (dev only), routers,
                   API 404 guard, static mount
   config.py       Settings read from the environment
+  ai.py           OpenRouter client, called through the OpenAI SDK
   db.py           SQLite: schema, connections, and the board queries
   models.py       Pydantic Card, Column, BoardData, and the board invariants
   seed.py         The board a new user starts with
@@ -19,12 +20,14 @@ app/
     health.py     GET /api/health
     auth.py       Login, logout, me, and the require_user dependency
     board.py      GET and PUT /api/board
+    ai.py         POST /api/ai/ping, a temporary connectivity check
   static/         The built NextJS export, copied in by Docker. Not in git.
 tests/
   conftest.py     Fixtures: a stand-in export directory and a TestClient over it
   test_health.py  Health endpoint
   test_auth.py    Sign in, sign out, session, and the route guard
   test_board.py   Board routes, seeding, validation, isolation, and persistence
+  test_ai.py      The OpenRouter client and the ping route, with the SDK mocked
   test_static.py  Static serving and the API 404 guard
   test_app.py     The app still runs when the frontend has not been built
 ```
@@ -112,6 +115,22 @@ board untouched.
 `seed.py` holds the board a new user gets, generated from the frontend's `initialData` and verified equal to
 it. After Part 7 removes `initialData` from the bundle it is the only definition of a fresh board.
 
+## AI
+
+OpenRouter, called through the OpenAI SDK by pointing its `base_url` at
+`https://openrouter.ai/api/v1`. The model is `openai/gpt-oss-120b`.
+
+`ai.get_client()` raises **503** when `OPENROUTER_API_KEY` is unset, naming the variable and where it goes,
+rather than failing deeper with something unreadable. A call that gets no answer raises **502**. The two are
+kept apart on purpose: 503 means the app is not configured, 502 means it is configured but the request did
+not get through.
+
+`POST /api/ai/ping` asks for 2+2 and requires a session, so an unauthenticated caller cannot spend credits.
+It is temporary and comes out in Part 9 when `/api/chat` lands.
+
+The test suite replaces `ai.OpenAI` outright, so it needs no network and no key. Nothing in the suite makes
+a real call: the live check is run by hand.
+
 ## Configuration
 
 | Variable | Default | Purpose |
@@ -120,6 +139,9 @@ it. After Part 7 removes `initialData` from the bundle it is the only definition
 | `SECRET_KEY` | a dev placeholder | Signs the session cookie |
 | `AUTH_USERNAME` | `user` | The MVP account |
 | `AUTH_PASSWORD` | `password` | The MVP password |
+| `OPENROUTER_API_KEY` | unset | OpenRouter key. Unset means every AI route answers 503. |
+| `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | The OpenAI-compatible endpoint |
+| `AI_MODEL` | `openai/gpt-oss-120b` | Model id |
 | `DATABASE_PATH` | `data/pm.db` in the repo root | The SQLite file. Set explicitly to `/app/data/pm.db` in the image: the backend lives at `/app/app` there, so deriving it from the source layout lands on `/`, off the mounted volume. |
 | `DEV_CORS_ORIGIN` | unset | When set, enables CORS with credentials for that one origin. Used for `npm run dev` against a local backend. Unset in Docker, where API and site share an origin. |
 
@@ -147,4 +169,4 @@ step when bumping.
 ## Notes
 
 - `httpx2` is the test HTTP client. Starlette's `TestClient` deprecates plain `httpx`.
-- Coming in later parts: OpenRouter calls (Part 8), chat with structured outputs (Part 9).
+- Coming in later parts: chat with structured outputs (Part 9).

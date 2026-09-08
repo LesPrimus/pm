@@ -12,7 +12,7 @@ Rules for the agent:
 - Coding standards from the root `AGENTS.md` apply throughout: latest idiomatic libraries, simplest thing that
   works, no speculative features, no emojis, root-cause fixes only.
 
-Status: Parts 1 to 7 complete. Part 8 next.
+Status: Parts 1 to 8 complete. Part 9 next.
 
 ## Target repo layout
 
@@ -277,12 +277,12 @@ Success criteria:
 
 Goal: the backend can call an LLM through OpenRouter.
 
-- [ ] Confirm `OPENROUTER_API_KEY` is in the root `.env` and reaches the container via `compose.yaml`.
-- [ ] Add the `openai` SDK to `backend/pyproject.toml`, pointed at `https://openrouter.ai/api/v1`.
-- [ ] Add `backend/app/ai.py` with the client and the model id `openai/gpt-oss-120b` from config.
-- [ ] Add a temporary `POST /api/ai/ping` that asks the model for `2+2` and returns the answer.
-- [ ] Handle a missing key with a clear 503 rather than a stack trace.
-- [ ] Update `backend/AGENTS.md`.
+- [x] Confirm `OPENROUTER_API_KEY` is in the root `.env` and reaches the container via `compose.yaml`.
+- [x] Add the `openai` SDK to `backend/pyproject.toml`, pointed at `https://openrouter.ai/api/v1`.
+- [x] Add `backend/app/ai.py` with the client and the model id `openai/gpt-oss-120b` from config.
+- [x] Add a temporary `POST /api/ai/ping` that asks the model for `2+2` and returns the answer.
+- [x] Handle a missing key with a clear 503 rather than a stack trace.
+- [x] Update `backend/AGENTS.md`.
 
 Tests:
 
